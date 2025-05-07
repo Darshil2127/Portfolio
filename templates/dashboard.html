@@ -1,16 +1,26 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Recommendations</title>
+    <title>Portfolio Dashboard</title>
 </head>
 <body>
-    <h2>Stock/Crypto Recommendations</h2>
+    <h1>Stock/Crypto Recommendations</h1>
     <ul>
-    {% for item in recommendations %}
-        <li><strong>{{ item.ticker }}</strong>: {{ item.recommendation }}</li>
-    {% endfor %}
+        {% for item in recommendations %}
+            <li>{{ item.ticker }}: {{ item.recommendation }}</li>
+        {% endfor %}
     </ul>
-    <a href="/">Back</a>
+
+    <h2>📢 Latest Market News</h2>
+    <ul>
+        {% for article in news %}
+            <li>
+                <a href="{{ article.url }}" target="_blank">{{ article.title }}</a><br>
+                <small>{{ article.source.name }} - {{ article.publishedAt }}</small>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <br><a href="/">Back</a>
 </body>
 </html>
