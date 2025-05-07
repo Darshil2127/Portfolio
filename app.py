@@ -16,12 +16,28 @@ def dummy_ai_analysis(tickers):
     return recommendations
 
 # Fetch real-time financial news
+import requests
+
 def fetch_finance_news():
-    api_key = '2dbe2186699b47bb881b39254f2a38ea'
-    url = f'https://newsapi.org/v2/top-headlines?category=business&language=en&apiKey={api_key}'
-    response = requests.get(url)
-    articles = response.json().get('articles', [])
-    return articles[:5]  # Return top 5 articles
+    url = "https://newsapi.org/v2/top-headlines"
+    params = {
+        'apiKey': '2dbe2186699b47bb881b39254f2a38ea',  # Your API key
+        'category': 'business',  # You can adjust the category if needed
+        'country': 'us',  # You can adjust the country if needed
+    }
+    response = requests.get(url, params=params)
+    
+    if response.status_code == 200:
+        try:
+            articles = response.json().get('articles', [])
+            return articles
+        except ValueError:
+            print("Error: Response is not in JSON format.")
+            return []
+    else:
+        print(f"Error: Received {response.status_code} from NewsAPI.")
+        return []
+  # Return top 5 articles
 
 @app.route("/", methods=["GET", "POST"])
 def index():
