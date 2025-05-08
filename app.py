@@ -27,7 +27,7 @@ def fetch_news(ticker):
     url = f"https://api.marketaux.com/v1/news/all?symbols={ticker}&filter_entities=true&language=en&api_token={MARKETAUX_API_KEY}"
     response = requests.get(url)
     try:
-        articles = response.json().get("data", [])[:5]
+        articles = response.json().get("data", [])[:3]
         return [{
             "title": article["title"],
             "url": article["url"],
