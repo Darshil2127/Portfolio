@@ -1,22 +1,63 @@
-<h3 class="mt-5">📢 Latest Market News</h3>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FinFuse Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f4; }
+        h1 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: center; }
+        th { background-color: #007BFF; color: white; }
+        .ai-suggestion-BUY { color: green; font-weight: bold; }
+        .ai-suggestion-SELL { color: red; font-weight: bold; }
+        .ai-suggestion-HOLD { color: orange; font-weight: bold; }
+        .summary { margin-top: 30px; padding: 20px; background-color: #fff; border-radius: 5px; }
+        .news-section { margin-top: 40px; background-color: #fff; padding: 20px; }
+    </style>
+</head>
+<body>
+    <h1>📊 FinFuse Portfolio Dashboard</h1>
 
-<!-- Filters -->
-<div class="mb-3">
-  <form method="GET">
-    <label for="category">Filter by:</label>
-    <select name="category" id="category" onchange="this.form.submit()">
-      <option value="">All</option>
-      <option value="business">Business</option>
-      <option value="technology">Technology</option>
-      <option value="crypto">Crypto</option>
-    </select>
-  </form>
-</div>
+    <div class="summary">
+        <p><strong>Total Invested:</strong> ${{ total_invested }}</p>
+        <p><strong>Current Value:</strong> ${{ current_value }}</p>
+        <p><strong>Gain/Loss:</strong> ${{ gain_loss }}</p>
+    </div>
 
-<!-- News Cards -->
-<div class="row">
-  {% for article in news %}
-  <div class="col-md-4 mb-3">
-    <div class="card h-100">
-      {% if article.urlToImage %}
-      <img src="{{ article.urlToImage }}" class="card-img-top" alt="N
+    <table>
+        <thead>
+            <tr>
+                <th>Ticker</th>
+                <th>Quantity</th>
+                <th>Buy Price</th>
+                <th>Current Price</th>
+                <th>Total Value</th>
+                <th>AI Suggestion</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stock in portfolio_data %}
+            <tr>
+                <td>{{ stock.ticker }}</td>
+                <td>{{ stock.quantity }}</td>
+                <td>${{ stock.buy_price }}</td>
+                <td>${{ stock.current_price }}</td>
+                <td>${{ stock.total_value }}</td>
+                <td class="ai-suggestion-{{ stock.ai_suggestion }}">{{ stock.ai_suggestion }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="news-section">
+        <h2>📰 Latest Market News</h2>
+        {% for article in news_data %}
+        <div style="margin-bottom: 15px;">
+            <h4><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></h4>
+            <p><small>Published: {{ article.published_at }}</small></p>
+            <p>{{ article.description }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
