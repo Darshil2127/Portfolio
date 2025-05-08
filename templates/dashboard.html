@@ -1,26 +1,22 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Portfolio Dashboard</title>
-</head>
-<body>
-    <h1>Stock/Crypto Recommendations</h1>
-    <ul>
-        {% for item in recommendations %}
-            <li>{{ item.ticker }}: {{ item.recommendation }}</li>
-        {% endfor %}
-    </ul>
+<h3 class="mt-5">📢 Latest Market News</h3>
 
-    <h2>📢 Latest Market News</h2>
-    <ul>
-        {% for article in news %}
-            <li>
-                <a href="{{ article.url }}" target="_blank">{{ article.title }}</a><br>
-                <small>{{ article.source.name }} - {{ article.publishedAt }}</small>
-            </li>
-        {% endfor %}
-    </ul>
+<!-- Filters -->
+<div class="mb-3">
+  <form method="GET">
+    <label for="category">Filter by:</label>
+    <select name="category" id="category" onchange="this.form.submit()">
+      <option value="">All</option>
+      <option value="business">Business</option>
+      <option value="technology">Technology</option>
+      <option value="crypto">Crypto</option>
+    </select>
+  </form>
+</div>
 
-    <br><a href="/">Back</a>
-</body>
-</html>
+<!-- News Cards -->
+<div class="row">
+  {% for article in news %}
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      {% if article.urlToImage %}
+      <img src="{{ article.urlToImage }}" class="card-img-top" alt="N
