@@ -35,47 +35,62 @@ def get_ai_suggestion(ticker, buy_price, current_price):
 def home():
     return render_template("index.html")
 
-@app.route("/dashboard", methods=["POST"])
+@app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
-    file = request.files["file"]
-    if not file:
-        return "No file uploaded.", 400
+    if request.method == 'POST':
+        file = request.files['file']
+        if file:
+            df = pd.read_csv(file)
 
-    stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
-    csv_input = csv.DictReader(stream)
+            # Add this to make sure required columns exist
+            if not {'Ticker', 'Quantity', 'Buy Price'}.issubset(df.columns):
+                return "Invalid CSV format", 400
 
-    portfolio = []
-    total_invested = 0.0
-    current_value = 0.0
+            portfolio = []
+            total_invested = 0
+            current_value = 0
 
-    for row in csv_input:
-        ticker = row["Ticker"].strip().upper()
-        quantity = int(row["Quantity"])
-        buy_price = float(row["Buy Price"])
+            for _, row in df.iterrows():
+                ticker = row['Ticker']
+                quantity = int(row['Quantity'])
+                buy_price = float(row['Buy Price'])
 
-        current_price = fetch_price(ticker)
-        total_val = current_price * quantity
-        ai_suggestion = get_ai_suggestion(ticker, buy_price, current_price)
+                # Call Alpha Vantage API to get current price
+                price_url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey=2S7DC1BF8WZ46PX2'
+                response = requests.get(price_url).json()
+                try:
+                    current_price = float(response['Global Quote']['05. price'])
+                except:
+                    current_price = 0.0
 
-        total_invested += quantity * buy_price
-        current_value += total_val
+                total_value = quantity * current_price
+                invested = quantity * buy_price
 
-        portfolio.append({
-            "ticker": ticker,
-            "quantity": quantity,
-            "buy_price": buy_price,
-            "current_price": round(current_price, 2),
-            "total_value": round(total_val, 2),
-            "ai_suggestion": ai_suggestion
-        })
+                suggestion = "BUY" if current_price < buy_price else "SELL"
 
-    gain_loss = round(current_value - total_invested, 2)
+                portfolio.append({
+                    "ticker": ticker,
+                    "quantity": quantity,
+                    "buy_price": round(buy_price, 2),
+                    "current_price": round(current_price, 2),
+                    "total_value": round(total_value, 2),
+                    "ai_suggestion": suggestion
+                })
 
-    return render_template("dashboard.html",
-                           portfolio=portfolio,
-                           total_invested=round(total_invested, 2),
-                           current_value=round(current_value, 2),
-                           gain_loss=gain_loss)
+                total_invested += invested
+                current_value += total_value
+
+            gain_loss = round(current_value - total_invested, 2)
+
+            return render_template(
+                "dashboard.html",
+                portfolio=portfolio,
+                total_invested=round(total_invested, 2),
+                current_value=round(current_value, 2),
+                gain_loss=gain_loss
+            )
+
+    return render_template("dashboard.html", portfolio=None)
 
 if __name__ == "__main__":
     app.run(debug=True)
