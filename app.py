@@ -1,92 +1,81 @@
-from flask import Flask, render_template, request
-import pandas as pd
+import csv
+import io
+import os
 import requests
+from flask import Flask, request, render_template
+from dotenv import load_dotenv
 
 app = Flask(__name__)
-ALPHA_VANTAGE_API_KEY = "2S7DC1BF8WZ46PX2"
-MARKETAUX_API_KEY = "VQLCY5MmRKd5NoGznLXmdm62igUwqttW4eEGxZYp"
+load_dotenv()
 
-def fetch_current_price(ticker):
-    url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
-    response = requests.get(url)
-    data = response.json()
+ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_KEY", "2S7DC1BF8WZ46PX2")
+
+def fetch_price(ticker):
+    """Fetch current price from Alpha Vantage"""
+    url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={ALPHA_VANTAGE_KEY}"
     try:
-        return float(data["Global Quote"]["05. price"])
-    except:
+        response = requests.get(url)
+        data = response.json()
+        price_str = data.get("Global Quote", {}).get("05. price", None)
+        return float(price_str) if price_str else 0.0
+    except Exception as e:
+        print(f"Error fetching price for {ticker}: {e}")
         return 0.0
 
-def get_ai_suggestion(current_price, buy_price):
-    if current_price >= 1.05 * buy_price:
+def get_ai_suggestion(ticker, buy_price, current_price):
+    """Very basic dummy AI suggestion logic"""
+    if current_price > buy_price * 1.05:
         return "SELL"
-    elif current_price <= 0.95 * buy_price:
+    elif current_price < buy_price * 0.95:
         return "BUY"
     else:
         return "HOLD"
 
-def fetch_news(ticker):
-    url = f"https://api.marketaux.com/v1/news/all?symbols={ticker}&filter_entities=true&language=en&api_token={MARKETAUX_API_KEY}"
-    response = requests.get(url)
-    try:
-        articles = response.json().get("data", [])[:3]
-        return [{
-            "title": article["title"],
-            "url": article["url"],
-            "published_at": article["published_at"],
-            "description": article.get("description", "")
-        } for article in articles]
-    except:
-        return []
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        file = request.files["file"]
-        df = pd.read_csv(file)
+@app.route("/dashboard", methods=["POST"])
+def dashboard():
+    file = request.files["file"]
+    if not file:
+        return "No file uploaded.", 400
 
-        portfolio_data = []
-        total_invested = 0
-        current_value = 0
-        all_news = []
+    stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+    csv_input = csv.DictReader(stream)
 
-        for _, row in df.iterrows():
-            ticker = row["Ticker"]
-            quantity = row["Quantity"]
-            buy_price = row["Buy Price"]
+    portfolio = []
+    total_invested = 0.0
+    current_value = 0.0
 
-            current_price = fetch_current_price(ticker)
-            total_value = current_price * quantity
-            ai_suggestion = get_ai_suggestion(current_price, buy_price)
+    for row in csv_input:
+        ticker = row["Ticker"].strip().upper()
+        quantity = int(row["Quantity"])
+        buy_price = float(row["Buy Price"])
 
-            total_invested += quantity * buy_price
-            current_value += total_value
+        current_price = fetch_price(ticker)
+        total_val = current_price * quantity
+        ai_suggestion = get_ai_suggestion(ticker, buy_price, current_price)
 
-            portfolio_data.append({
-                "ticker": ticker,
-                "quantity": quantity,
-                "buy_price": round(buy_price, 2),
-                "current_price": round(current_price, 2),
-                "total_value": round(total_value, 2),
-                "ai_suggestion": ai_suggestion
-            })
+        total_invested += quantity * buy_price
+        current_value += total_val
 
-            news = fetch_news(ticker)
-            all_news.extend(news)
+        portfolio.append({
+            "ticker": ticker,
+            "quantity": quantity,
+            "buy_price": buy_price,
+            "current_price": round(current_price, 2),
+            "total_value": round(total_val, 2),
+            "ai_suggestion": ai_suggestion
+        })
 
-        gain_loss = round(current_value - total_invested, 2)
-        return render_template("dashboard.html",
-                               portfolio_data=portfolio_data,
-                               total_invested=round(total_invested, 2),
-                               current_value=round(current_value, 2),
-                               gain_loss=gain_loss,
-                               news_data=all_news)
+    gain_loss = round(current_value - total_invested, 2)
 
-    return '''
-    <h2>Upload your Portfolio CSV File</h2>
-    <form method="POST" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <input type="submit" value="Upload">
-    </form>
-    '''
+    return render_template("dashboard.html",
+                           portfolio=portfolio,
+                           total_invested=round(total_invested, 2),
+                           current_value=round(current_value, 2),
+                           gain_loss=gain_loss)
 
 if __name__ == "__main__":
     app.run(debug=True)
