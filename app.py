@@ -82,12 +82,11 @@ def dashboard():
 
             gain_loss = round(current_value - total_invested, 2)
 
-            return render_template(
-                "dashboard.html",
-                portfolio=portfolio,
-                total_invested=round(total_invested, 2),
-                current_value=round(current_value, 2),
-                gain_loss=gain_loss
+            
+        return render_template('dashboard.html', portfolio=portfolio_data,
+                               total_invested=total_invested,
+                               total_current_value=total_current_value,
+                               gain_loss=gain_loss)
             )
 
     return render_template("dashboard.html", portfolio=None)
