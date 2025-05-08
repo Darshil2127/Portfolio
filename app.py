@@ -19,17 +19,29 @@ def dummy_ai_analysis(tickers):
 import requests
 
 def fetch_finance_news(category='business'):
+    import requests
     api_key = '2dbe2186699b47bb881b39254f2a38ea'
     
-    # Custom keyword for crypto since NewsAPI has no crypto category
     if category == 'crypto':
         url = f'https://newsapi.org/v2/everything?q=crypto&language=en&sortBy=publishedAt&apiKey={api_key}'
     else:
         url = f'https://newsapi.org/v2/top-headlines?category={category}&language=en&apiKey={api_key}'
 
-    response = requests.get(url)
-    articles = response.json().get('articles', [])
-    return articles[:6]  # Return top 6 articles
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise HTTPError for bad responses
+        data = response.json()
+        return data.get('articles', [])[:6]
+    except requests.exceptions.RequestException as e:
+        print("NewsAPI Request Error:", e)
+        print("Status Code:", response.status_code if 'response' in locals() else "N/A")
+        print("Response Content:", response.text if 'response' in locals() else "N/A")
+        return []
+    except ValueError as e:
+        print("JSON Decode Error:", e)
+        print("Response was not valid JSON.")
+        return []
+
 
   # Return top 5 articles
 
