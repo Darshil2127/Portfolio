@@ -2,6 +2,7 @@ import csv
 import io
 import os
 import requests
+import pandas as pd  # Make sure pandas is imported
 from flask import Flask, request, render_template
 from dotenv import load_dotenv
 
@@ -82,12 +83,10 @@ def dashboard():
 
             gain_loss = round(current_value - total_invested, 2)
 
-            
-        return render_template('dashboard.html', portfolio=portfolio_data,
-                               total_invested=total_invested,
-                               total_current_value=total_current_value,
-                               gain_loss=gain_loss)
-            )
+            return render_template('dashboard.html', portfolio=portfolio,  # Updated to use 'portfolio'
+                                   total_invested=total_invested,
+                                   total_current_value=current_value,  # Updated to 'current_value'
+                                   gain_loss=gain_loss)
 
     return render_template("dashboard.html", portfolio=None)
 
