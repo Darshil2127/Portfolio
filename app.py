@@ -40,7 +40,7 @@ def home():
 def dashboard():
     if request.method == 'POST':
         # Ensure the file is included in the request
-        file = request.files.get('file')
+        file = request.files.get(('portfolio')
         if file and file.filename.endswith('.csv'):
             try:
                 # Read the CSV into a DataFrame
