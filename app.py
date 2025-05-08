@@ -18,38 +18,37 @@ def dummy_ai_analysis(tickers):
 # Fetch real-time financial news
 import requests
 
-def fetch_finance_news():
-    url = "https://newsapi.org/v2/top-headlines"
-    params = {
-        'apiKey': '2dbe2186699b47bb881b39254f2a38ea',  # Your API key
-        'category': 'business',  # You can adjust the category if needed
-        'country': 'us',  # You can adjust the country if needed
-    }
-    response = requests.get(url, params=params)
+def fetch_finance_news(category='business'):
+    api_key = '2dbe2186699b47bb881b39254f2a38ea'
     
-    if response.status_code == 200:
-        try:
-            articles = response.json().get('articles', [])
-            return articles
-        except ValueError:
-            print("Error: Response is not in JSON format.")
-            return []
+    # Custom keyword for crypto since NewsAPI has no crypto category
+    if category == 'crypto':
+        url = f'https://newsapi.org/v2/everything?q=crypto&language=en&sortBy=publishedAt&apiKey={api_key}'
     else:
-        print(f"Error: Received {response.status_code} from NewsAPI.")
-        return []
+        url = f'https://newsapi.org/v2/top-headlines?category={category}&language=en&apiKey={api_key}'
+
+    response = requests.get(url)
+    articles = response.json().get('articles', [])
+    return articles[:6]  # Return top 6 articles
+
   # Return top 5 articles
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    category = request.args.get("category", "business")
+
     if request.method == "POST":
         file = request.files["portfolio"]
         if file.filename.endswith(".csv"):
             df = pd.read_csv(file)
             tickers = df["Ticker"].tolist()
             recommendations = dummy_ai_analysis(tickers)
-            news = fetch_finance_news()
+            news = fetch_finance_news(category)
             return render_template("dashboard.html", recommendations=recommendations, news=news)
-    return render_template("index.html")
+
+    news = fetch_finance_news(category)
+    return render_template("index.html", news=news)
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=False)
