@@ -67,16 +67,25 @@ async function addToWatchlist(e) {
   const input = document.getElementById("watchlist-symbol");
   const symbol = input.value.trim().toUpperCase();
   input.value = "";
-
   if (!symbol) return;
 
   const price = await getWatchPrice(symbol);
   const container = document.getElementById("watchlist-container");
 
+  const id = `chart-${symbol}-${Date.now()}`;
+
   const item = document.createElement("div");
   item.className = "watchlist-item";
-  item.innerHTML = `<span>${symbol}</span><span>$${price.toFixed(2)}</span>`;
+  item.innerHTML = `
+    <div style="flex: 1;">
+      <strong>${symbol}</strong> <span style="margin-left: 10px;">$${price.toFixed(2)}</span>
+      <canvas id="${id}" height="40"></canvas>
+    </div>
+    <button class="delete-btn" onclick="this.parentElement.remove()">🗑️</button>
+  `;
   container.appendChild(item);
+
+  renderMiniChart(id, price);
 }
 
 async function getWatchPrice(symbol) {
@@ -87,6 +96,31 @@ async function getWatchPrice(symbol) {
   } catch {
     return 0;
   }
+}
+
+function renderMiniChart(canvasId, currentPrice) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Start', 'Now'],
+      datasets: [{
+        data: [currentPrice * 0.95, currentPrice],
+        borderColor: '#1f77b4',
+        tension: 0.4,
+        fill: false,
+        pointRadius: 0
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { display: false }
+      }
+    }
+  });
 }
 </script>
 </body>
