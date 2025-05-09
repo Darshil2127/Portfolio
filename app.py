@@ -121,3 +121,14 @@ def index():
 @app.route("/dashboard")
 def dashboard():
     return render_template("index.html")
+
+@app.route("/api/news")
+def live_news():
+    try:
+        symbols = "AAPL,MSFT,TSLA,BTC-USD,ETH-USD,SPY,QQQ"
+        url = f"https://api.marketaux.com/v1/news/all?symbols={symbols}&language=en&limit=10&api_token={MARKETAUX_API_TOKEN}"
+        news_data = requests.get(url).json().get("data", [])
+        return {"news": news_data}
+    except:
+        return {"news": []}
+
