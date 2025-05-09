@@ -139,3 +139,46 @@ button:hover {
     height: 36px;
   }
 }
+
+/* === DARK MODE STYLING === */
+body.dark-mode {
+  background-color: #1e1e1e;
+  color: #f0f0f0;
+}
+
+body.dark-mode .dashboard-wrapper {
+  background-color: #2a2a2a;
+  color: #f0f0f0;
+}
+
+body.dark-mode table {
+  background-color: #333;
+  color: #f0f0f0;
+}
+
+body.dark-mode th {
+  background-color: #111;
+}
+
+body.dark-mode td {
+  border-bottom: 1px solid #444;
+}
+
+body.dark-mode .news-card {
+  background-color: #3a3a3a;
+  color: #eee;
+}
+
+body.dark-mode a {
+  color: #90cdf4;
+}
+
+body.dark-mode button {
+  background-color: #444;
+  color: #f0f0f0;
+}
+
+body.dark-mode button:hover {
+  background-color: #666;
+}
+
