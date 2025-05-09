@@ -85,8 +85,8 @@
 <!-- Scripts -->
 <script>
 function downloadPDF() {
-  const dashboard = document.getElementById("dashboard");
-  html2canvas(dashboard).then(canvas => {
+  const pdfArea = document.getElementById("pdf-area");
+  html2canvas(pdfArea).then(canvas => {
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jspdf.jsPDF("p", "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -96,7 +96,7 @@ function downloadPDF() {
     pdf.save("FinFuse-Portfolio.pdf");
   });
 }
-
+  
 function toggleDarkMode() {
   const body = document.body;
   body.classList.toggle("dark-mode");
