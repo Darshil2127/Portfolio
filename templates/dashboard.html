@@ -11,100 +11,115 @@
 <body style="font-family: 'Segoe UI', sans-serif; background: #f5f7fa; padding: 2rem;">
 
 <div id="dashboard" style="max-width: 1200px; margin: auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 0 12px rgba(0,0,0,0.1);">
-    <div style="display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="FinFuse Logo" style="height: 50px; border-radius: 8px;">
-            <h1 style="margin: 0;">FinFuse Portfolio Dashboard</h1>
-        </div>
-        <button onclick="downloadPDF()" style="padding: 0.5rem 1rem; background: #1f77b4; color: white; border: none; border-radius: 6px; cursor: pointer;">Export to PDF</button>
+  <!-- Header -->
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="FinFuse Logo" style="height: 50px; border-radius: 8px;">
+      <h1 style="margin: 0;">FinFuse Portfolio Dashboard</h1>
     </div>
+    <button onclick="downloadPDF()" style="padding: 0.5rem 1rem; background: #1f77b4; color: white; border: none; border-radius: 6px; cursor: pointer;">Export to PDF</button>
+  </div>
 
-    <div style="margin: 2rem 0; font-size: 1.2rem;">
-        <p><strong>Total Invested:</strong> ${{ invested | default(0) | round(2) }}</p>
-        <p><strong>Current Value:</strong> ${{ current | default(0) | round(2) }}</p>
-        <p><strong>Gain/Loss:</strong>
-            <span style="color: {{ 'green' if gain > 0 else 'red' if gain < 0 else 'black' }};">
-                ${{ gain | default(0) | round(2) }}
-            </span>
-        </p>
+  <!-- Summary -->
+  <div style="margin: 2rem 0; font-size: 1.2rem;">
+    <p><strong>Total Invested:</strong> ${{ invested | default(0) | round(2) }}</p>
+    <p><strong>Current Value:</strong> ${{ current | default(0) | round(2) }}</p>
+    <p><strong>Gain/Loss:</strong>
+      <span style="color: {{ 'green' if gain > 0 else 'red' if gain < 0 else 'black' }};">
+        ${{ gain | default(0) | round(2) }}
+      </span>
+    </p>
+  </div>
+
+  <!-- Portfolio Table -->
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead style="background-color: #002244; color: white;">
+      <tr>
+        <th>Ticker</th>
+        <th>Quantity</th>
+        <th>Buy Price</th>
+        <th>Current Price</th>
+        <th>Total Value</th>
+        <th>AI Suggestion</th>
+        <th>AI Reason</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for stock in portfolio %}
+      <tr style="text-align: center; border-bottom: 1px solid #ddd;">
+        <td><a href="https://finance.yahoo.com/quote/{{ stock['Ticker'] }}" target="_blank">{{ stock['Ticker'] }}</a></td>
+        <td>{{ stock['Quantity'] }}</td>
+        <td>${{ stock['Buy Price'] }}</td>
+        <td>${{ stock['Current Price'] | round(2) }}</td>
+        <td>${{ stock['Total Value'] | round(2) }}</td>
+        <td style="color: {% if stock['AI Suggestion'] == 'BUY' %}green{% elif stock['AI Suggestion'] == 'SELL' %}red{% else %}gray{% endif %};">
+          {{ stock['AI Suggestion'] }}
+        </td>
+        <td>{{ stock['AI Reason'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Uploaded CSV News -->
+  <h2 style="margin-top: 3rem;">📰 Latest News Related to Your Stocks</h2>
+  {% for article in news %}
+    <div class="news-card">
+      <h3>{{ article['title'] }}</h3>
+      <p>{{ article['description'][:150] }}...</p>
+      <a href="{{ article['url'] }}" target="_blank">Read More</a>
     </div>
+  {% endfor %}
 
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead style="background-color: #002244; color: white;">
-            <tr>
-                <th>Ticker</th>
-                <th>Quantity</th>
-                <th>Buy Price</th>
-                <th>Current Price</th>
-                <th>Total Value</th>
-                <th>AI Suggestion</th>
-                <th>AI Reason</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for stock in portfolio %}
-            <tr style="text-align: center; border-bottom: 1px solid #ddd;">
-                <td><a href="https://finance.yahoo.com/quote/{{ stock['Ticker'] }}" target="_blank">{{ stock['Ticker'] }}</a></td>
-                <td>{{ stock['Quantity'] }}</td>
-                <td>${{ stock['Buy Price'] }}</td>
-                <td>${{ stock['Current Price'] | round(2) }}</td>
-                <td>${{ stock['Total Value'] | round(2) }}</td>
-                <td style="color: {% if stock['AI Suggestion'] == 'BUY' %}green{% elif stock['AI Suggestion'] == 'SELL' %}red{% else %}gray{% endif %};">
-                    {{ stock['AI Suggestion'] }}
-                </td>
-                <td>{{ stock['AI Reason'] }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <h2 style="margin-top: 3rem;">📰 Latest News Related to Your Stocks</h2>
-    {% for article in news %}
-        <div class="news-card">
-            <h3>{{ article['title'] }}</h3>
-            <p>{{ article['description'][:150] }}...</p>
-            <a href="{{ article['url'] }}" target="_blank">Read More</a>
-        </div>
-    {% endfor %}
-
-    <h2 style="margin-top: 3rem;">⚡ Live Market News (Auto-refreshes)</h2>
-    <div id="live-news"></div>
+  <!-- Auto-refreshing Market News -->
+  <h2 style="margin-top: 3rem;">⚡ Live Market News (Auto-refreshes)</h2>
+  <div id="live-news"></div>
 </div>
 
+<!-- Scripts -->
 <script>
 function downloadPDF() {
-    const dashboard = document.getElementById("dashboard");
-    html2canvas(dashboard).then(canvas => {
-        const imgData = canvas.toDataURL("image/png");
-        const pdf = new jspdf.jsPDF("p", "mm", "a4");
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const imgWidth = pageWidth - 20;
-        const imgHeight = canvas.height * imgWidth / canvas.width;
-        pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
-        pdf.save("FinFuse-Portfolio.pdf");
-    });
+  const dashboard = document.getElementById("dashboard");
+  html2canvas(dashboard).then(canvas => {
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jspdf.jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const imgWidth = pageWidth - 20;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+    pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
+    pdf.save("FinFuse-Portfolio.pdf");
+  });
 }
 
 function fetchLiveNews() {
-    fetch("/api/news")
-        .then(res => res.json())
-        .then(data => {
-            const container = document.getElementById("live-news");
-            container.innerHTML = "";
-            data.news.forEach(article => {
-                const tag = article.entities && article.entities[0] && article.entities[0].type ? article.entities[0].type.toUpperCase() : "NEWS";
-                const div = document.createElement("div");
-                div.className = "news-card";
-                div.innerHTML = `
-                    <div style="font-size: 0.8rem; font-weight: bold; color: white; background: #444; display: inline-block; padding: 3px 8px; border-radius: 4px; margin-bottom: 5px;">${tag}</div>
-                    <h4>${article.title}</h4>
-                    <p>${article.description?.slice(0, 150)}...</p>
-                    <a href="${article.url}" target="_blank">Read More</a>
-                `;
-                container.appendChild(div);
-            });
-        });
+  fetch("/api/news")
+    .then(res => res.json())
+    .then(data => {
+      const container = document.getElementById("live-news");
+      container.innerHTML = "";
+      const seen = new Set();
+
+      data.news.forEach(article => {
+        const key = article.title || article.url;
+        if (seen.has(key)) return;
+        seen.add(key);
+
+        const tag = article.entities?.[0]?.type?.toUpperCase() || "NEWS";
+        const div = document.createElement("div");
+        div.className = "news-card";
+        div.innerHTML = `
+          <div style="font-size: 0.8rem; font-weight: bold; color: white; background: #444; display: inline-block; padding: 3px 8px; border-radius: 4px; margin-bottom: 5px;">${tag}</div>
+          <h4>${article.title}</h4>
+          <p>${article.description?.slice(0, 150)}...</p>
+          <a href="${article.url}" target="_blank">Read More</a>
+        `;
+        container.appendChild(div);
+      });
+    })
+    .catch(err => console.error("News fetch failed:", err));
 }
+
+// Load initially and every 30 seconds
 fetchLiveNews();
 setInterval(fetchLiveNews, 30000);
 </script>
