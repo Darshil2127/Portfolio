@@ -81,11 +81,12 @@ async function addToWatchlist(e) {
       <strong>${symbol}</strong> <span style="margin-left: 10px;">$${price.toFixed(2)}</span>
       <canvas id="${id}" height="40"></canvas>
     </div>
-    <button class="delete-btn" onclick="this.parentElement.remove()">🗑️</button>
+    <button class="delete-btn" onclick="this.parentElement.remove(); saveWatchlistToStorage();">🗑️</button>
   `;
   container.appendChild(item);
 
   renderMiniChart(id, price);
+  saveWatchlistToStorage();
 }
 
 async function getWatchPrice(symbol) {
@@ -122,6 +123,22 @@ function renderMiniChart(canvasId, currentPrice) {
     }
   });
 }
+
+function saveWatchlistToStorage() {
+  const items = [];
+  document.querySelectorAll(".watchlist-item strong").forEach(el => {
+    if (el.textContent) items.push(el.textContent);
+  });
+  localStorage.setItem("watchlist", JSON.stringify(items));
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const saved = JSON.parse(localStorage.getItem("watchlist") || "[]");
+  saved.forEach(symbol => {
+    document.getElementById("watchlist-symbol").value = symbol;
+    document.querySelector(".watchlist-form").dispatchEvent(new Event("submit"));
+  });
+});
 </script>
 </body>
 </html>
