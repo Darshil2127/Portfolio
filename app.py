@@ -25,34 +25,46 @@ def get_current_price(symbol):
         pass
     return 0.0
 
-# Generate AI suggestion using OpenAI
+# Generate AI decision + reasoning
 def get_ai_suggestion(ticker, news_summary, buy_price, current_price):
     try:
         prompt = (
-            f"You are an investment advisor. Based on this news and the stock performance:\n\n"
+            f"You are a financial analyst. Based on the data below, give a BUY, SELL, or HOLD signal for the stock, "
+            f"and explain in 1 short sentence why.\n\n"
             f"Ticker: {ticker}\n"
             f"Buy Price: {buy_price}\n"
-            f"Current Price: {current_price}\n\n"
-            f"Recent Market News: {news_summary}\n\n"
-            f"Should the user BUY, HOLD, or SELL this stock? Reply with one word only."
+            f"Current Price: {current_price}\n"
+            f"News Summary: {news_summary}\n\n"
+            f"Reply in this format:\nDecision: [BUY/SELL/HOLD]\nReason: [one sentence]"
         )
 
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=5,
-            temperature=0
+            max_tokens=100,
+            temperature=0.5
         )
 
-        suggestion = response["choices"][0]["message"]["content"].strip().upper()
-        if suggestion in ["BUY", "SELL", "HOLD"]:
-            return suggestion
-        else:
-            return "HOLD"
-    except:
-        return "HOLD"
+        content = response["choices"][0]["message"]["content"].strip()
+        lines = content.split("\n")
+        decision = "HOLD"
+        reason = ""
 
-# Main route (Upload CSV)
+        for line in lines:
+            if line.upper().startswith("DECISION"):
+                decision = line.split(":")[-1].strip().upper()
+            elif line.upper().startswith("REASON"):
+                reason = line.split(":", 1)[-1].strip()
+
+        if decision not in ["BUY", "SELL", "HOLD"]:
+            decision = "HOLD"
+
+        return decision, reason
+
+    except:
+        return "HOLD", "Could not generate suggestion."
+
+# Upload and process CSV
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
@@ -61,29 +73,32 @@ def index():
             df = pd.read_csv(file)
             total_invested, current_value = 0.0, 0.0
 
-            # Get news summary
+            # Fetch news
             try:
                 news_data = requests.get(MARKETAUX_API).json().get("data", [])
-                news_text = " ".join([article["description"] or "" for article in news_data])
+                news_text = " ".join([article.get("description", "") for article in news_data])
             except:
                 news_data = []
                 news_text = ""
 
+            # Process portfolio
             for index, row in df.iterrows():
                 ticker = row["Ticker"]
                 buy_price = row["Buy Price"]
                 quantity = row["Quantity"]
+
                 current = get_current_price(ticker)
                 df.at[index, "Current Price"] = current
+                df.at[index, "Total Value"] = current * quantity
 
-                total = current * quantity
-                df.at[index, "Total Value"] = total
-                ai_suggestion = get_ai_suggestion(ticker, news_text, buy_price, current)
-                df.at[index, "AI Suggestion"] = ai_suggestion
+                decision, reason = get_ai_suggestion(ticker, news_text, buy_price, current)
+                df.at[index, "AI Suggestion"] = decision
+                df.at[index, "AI Reason"] = reason
 
                 total_invested += buy_price * quantity
-                current_value += total
-                time.sleep(15)  # to respect Alpha Vantage rate limits
+                current_value += current * quantity
+
+                time.sleep(15)  # to avoid hitting API limits
 
             gain_loss = current_value - total_invested
 
@@ -96,7 +111,7 @@ def index():
 
     return render_template("index.html")
 
-# Optional route for testing without upload
+# Optional static dashboard test route
 @app.route("/dashboard")
 def dashboard():
     df = pd.read_csv("sample_portfolio.csv")
@@ -104,7 +119,7 @@ def dashboard():
 
     try:
         news_data = requests.get(MARKETAUX_API).json().get("data", [])
-        news_text = " ".join([article["description"] or "" for article in news_data])
+        news_text = " ".join([article.get("description", "") for article in news_data])
     except:
         news_data = []
         news_text = ""
@@ -113,16 +128,17 @@ def dashboard():
         ticker = row["Ticker"]
         buy_price = row["Buy Price"]
         quantity = row["Quantity"]
+
         current = get_current_price(ticker)
         df.at[index, "Current Price"] = current
+        df.at[index, "Total Value"] = current * quantity
 
-        total = current * quantity
-        df.at[index, "Total Value"] = total
-        ai_suggestion = get_ai_suggestion(ticker, news_text, buy_price, current)
-        df.at[index, "AI Suggestion"] = ai_suggestion
+        decision, reason = get_ai_suggestion(ticker, news_text, buy_price, current)
+        df.at[index, "AI Suggestion"] = decision
+        df.at[index, "AI Reason"] = reason
 
         total_invested += buy_price * quantity
-        current_value += total
+        current_value += current * quantity
         time.sleep(15)
 
     gain_loss = current_value - total_invested
