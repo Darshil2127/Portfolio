@@ -1,4 +1,5 @@
 import os
+import time
 import pandas as pd
 import requests
 from flask import Flask, render_template, request
@@ -10,28 +11,32 @@ app.config['DEBUG'] = True
 
 # API Keys
 ALPHA_API_KEY = "HMTZ4KZAG65XW27N"
-MARKETAUX_API = "https://api.marketaux.com/v1/news/all?api_token=VQLCY5MmRKd5NoGznLXmdm62igUwqttW4eEGxZYp&limit=10&filter_entities=true"
+MARKETAUX_API_TOKEN = "VQLCY5MmRKd5NoGznLXmdm62igUwqttW4eEGxZYp"
 openai.api_key = "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"
 
+# Alpha Vantage: Get current stock price
 def get_current_price(symbol):
     url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_API_KEY}"
     try:
         response = requests.get(url, timeout=10)
         data = response.json()
-        price = data.get("Global Quote", {}).get("05. price", None)
-        return float(price) if price else 0.0
-    except:
-        return 0.0
+        price_str = data.get("Global Quote", {}).get("05. price", None)
+        if price_str:
+            return float(price_str)
+    except Exception as e:
+        print(f"[ERROR] Could not fetch price for {symbol}: {e}")
+    return 0.0
 
+# OpenAI: Get batch AI suggestions
 def get_batch_ai_suggestions(stocks, news_summary):
     try:
         prompt = (
-            f"You are an investment advisor. Based on the following portfolio and news, suggest BUY, HOLD, or SELL for each stock "
+            f"You are an investment advisor. Based on this portfolio and recent news, suggest BUY, SELL, or HOLD for each stock "
             f"with a short reason.\n\n"
             f"Market News:\n{news_summary}\n\n"
             f"Portfolio:\n" +
             "\n".join([f"{s['Ticker']}: Buy at {s['Buy Price']}, current {s['Current Price']}" for s in stocks]) +
-            "\n\nFormat your reply:\nTICKER - DECISION: REASON"
+            "\n\nFormat:\nTICKER - DECISION: REASON"
         )
 
         response = openai.ChatCompletion.create(
@@ -54,24 +59,31 @@ def get_batch_ai_suggestions(stocks, news_summary):
                     reason = rest[1].strip()
                     result[ticker] = (decision, reason)
         return result
-    except:
+    except Exception as e:
+        print(f"[ERROR] OpenAI failed: {e}")
         return {}
 
+# Home + Upload
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
         file = request.files["file"]
         if file:
-            df = pd.read_csv(file).head(3)  # Limit to 3 stocks for Render Free
+            df = pd.read_csv(file).head(3)  # Limit to 3 for memory safety
+            tickers = ",".join(df["Ticker"].tolist())
             total_invested = current_value = 0.0
 
+            # Fetch news filtered by tickers
             try:
-                news_data = requests.get(MARKETAUX_API).json().get("data", [])
+                news_url = f"https://api.marketaux.com/v1/news/all?symbols={tickers}&language=en&limit=10&api_token={MARKETAUX_API_TOKEN}"
+                news_data = requests.get(news_url).json().get("data", [])
                 news_summary = " ".join([a.get("description", "") for a in news_data])
-            except:
+            except Exception as e:
+                print(f"[ERROR] MarketAux failed: {e}")
                 news_data = []
                 news_summary = ""
 
+            # Build enriched stock list
             enriched = []
             for _, row in df.iterrows():
                 ticker = row["Ticker"]
@@ -91,6 +103,7 @@ def index():
                     "Total Value": total_value
                 })
 
+            # Get AI suggestions
             ai_results = get_batch_ai_suggestions(enriched, news_summary)
 
             for stock in enriched:
@@ -109,6 +122,7 @@ def index():
 
     return render_template("index.html")
 
+# Fallback dashboard route
 @app.route("/dashboard")
 def dashboard():
     return render_template("index.html")
