@@ -12,8 +12,10 @@
 
 <div id="dashboard" style="max-width: 1200px; margin: auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 0 12px rgba(0,0,0,0.1);">
     <div style="display: flex; align-items: center; justify-content: space-between;">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="FinFuse Logo" style="height: 50px;">
-        <h1>📊 FinFuse Portfolio Dashboard</h1>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="FinFuse Logo" style="height: 50px; border-radius: 8px;">
+            <h1 style="margin: 0;">FinFuse Portfolio Dashboard</h1>
+        </div>
         <button onclick="downloadPDF()" style="padding: 0.5rem 1rem; background: #1f77b4; color: white; border: none; border-radius: 6px; cursor: pointer;">Export to PDF</button>
     </div>
 
@@ -56,34 +58,55 @@
         </tbody>
     </table>
 
-    <div class="news-section">
-        <h2 style="margin-top: 3rem;">📰 Latest News Related to Your Stocks</h2>
-        {% for article in news %}
-            {% set highlight = "fed" in article['title']|lower or "interest" in article['title']|lower or "inflation" in article['title']|lower or "war" in article['title']|lower or "tariff" in article['title']|lower %}
-            <div class="news-card" style="{% if highlight %}border-left: 5px solid red;{% endif %}">
-                <h3>{% if highlight %}<span style="color:red">⚠</span> {% endif %}{{ article['title'] }}</h3>
-                <p>{{ article['description'][:150] }}...</p>
-                <a href="{{ article['url'] }}" target="_blank">Read More</a>
-            </div>
-        {% endfor %}
-    </div>
+    <h2 style="margin-top: 3rem;">📰 Latest News Related to Your Stocks</h2>
+    {% for article in news %}
+        <div class="news-card">
+            <h3>{{ article['title'] }}</h3>
+            <p>{{ article['description'][:150] }}...</p>
+            <a href="{{ article['url'] }}" target="_blank">Read More</a>
+        </div>
+    {% endfor %}
+
+    <h2 style="margin-top: 3rem;">⚡ Live Market News (Auto-refreshes)</h2>
+    <div id="live-news"></div>
 </div>
 
 <script>
-  function downloadPDF() {
+function downloadPDF() {
     const dashboard = document.getElementById("dashboard");
     html2canvas(dashboard).then(canvas => {
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jspdf.jsPDF("p", "mm", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth - 20;
-      const imgHeight = canvas.height * imgWidth / canvas.width;
-
-      pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
-      pdf.save("FinFuse-Portfolio.pdf");
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jspdf.jsPDF("p", "mm", "a4");
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const imgWidth = pageWidth - 20;
+        const imgHeight = canvas.height * imgWidth / canvas.width;
+        pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
+        pdf.save("FinFuse-Portfolio.pdf");
     });
-  }
+}
+
+function fetchLiveNews() {
+    fetch("/api/news")
+        .then(res => res.json())
+        .then(data => {
+            const container = document.getElementById("live-news");
+            container.innerHTML = "";
+            data.news.forEach(article => {
+                const tag = article.entities && article.entities[0] && article.entities[0].type ? article.entities[0].type.toUpperCase() : "NEWS";
+                const div = document.createElement("div");
+                div.className = "news-card";
+                div.innerHTML = `
+                    <div style="font-size: 0.8rem; font-weight: bold; color: white; background: #444; display: inline-block; padding: 3px 8px; border-radius: 4px; margin-bottom: 5px;">${tag}</div>
+                    <h4>${article.title}</h4>
+                    <p>${article.description?.slice(0, 150)}...</p>
+                    <a href="${article.url}" target="_blank">Read More</a>
+                `;
+                container.appendChild(div);
+            });
+        });
+}
+fetchLiveNews();
+setInterval(fetchLiveNews, 30000);
 </script>
 
 </body>
