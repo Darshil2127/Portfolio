@@ -1,93 +1,76 @@
 import os
-import requests
 import pandas as pd
-from flask import Flask, request, render_template
+import requests
+from flask import Flask, render_template, request
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Flask app setup
 app = Flask(__name__)
 
-# Alpha Vantage API key
-ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_KEY", "2S7DC1BF8WZ46PX2")
+ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "2S7DC1BF8WZ46PX2")
 
-def fetch_price(ticker):
-    """Fetch current stock price using Alpha Vantage API"""
-    url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={ALPHA_VANTAGE_KEY}"
+def get_current_price(ticker):
+    url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={ALPHA_VANTAGE_API_KEY}'
+    response = requests.get(url)
+    data = response.json()
     try:
-        response = requests.get(url)
-        data = response.json()
-        price_str = data.get("Global Quote", {}).get("05. price", None)
-        return float(price_str) if price_str else 0.0
-    except Exception as e:
-        print(f"Error fetching price for {ticker}: {e}")
+        return float(data["Global Quote"]["05. price"])
+    except (KeyError, ValueError):
         return 0.0
 
-@app.route("/")
-def home():
-    return render_template("index.html")
+def get_ai_suggestion(buy_price, current_price):
+    if current_price > buy_price:
+        return "SELL"
+    else:
+        return "BUY"
 
-@app.route('/dashboard', methods=['GET', 'POST'])
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("dashboard.html", portfolio=None)
+
+@app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
-    if request.method == 'POST':
-        file = request.files.get('file')
-        if not file or not file.filename.endswith('.csv'):
-            return "Invalid file format. Please upload a CSV file.", 400
+    if request.method == "POST":
+        if 'file' not in request.files:
+            return "No file part"
+        file = request.files['file']
+        if file.filename == '':
+            return "No selected file"
 
-        try:
-            df = pd.read_csv(file)
-        except Exception as e:
-            return f"Error reading CSV file: {e}", 400
-
-        # Ensure required columns are present
-        if not {'Ticker', 'Quantity', 'Buy Price'}.issubset(df.columns):
-            return "Invalid CSV format. Required columns: Ticker, Quantity, Buy Price", 400
-
+        df = pd.read_csv(file)
         portfolio = []
-        total_invested = 0
-        current_value = 0
+
+        total_invested = 0.0
+        total_current_value = 0.0
 
         for _, row in df.iterrows():
             ticker = row['Ticker']
-            quantity = int(row['Quantity'])
-            buy_price = float(row['Buy Price'])
+            quantity = row['Quantity']
+            buy_price = row['Buy Price']
 
-            current_price = fetch_price(ticker)
+            current_price = get_current_price(ticker)
+            total_value = current_price * quantity
+            ai_suggestion = get_ai_suggestion(buy_price, current_price)
 
-            total_value = quantity * current_price
-            invested = quantity * buy_price
-
-            # AI suggestion logic
-            if current_price > buy_price * 1.05:
-                suggestion = "SELL"
-            elif current_price < buy_price * 0.95:
-                suggestion = "BUY"
-            else:
-                suggestion = "HOLD"
+            total_invested += quantity * buy_price
+            total_current_value += total_value
 
             portfolio.append({
                 "ticker": ticker,
                 "quantity": quantity,
-                "buy_price": round(buy_price, 2),
-                "current_price": round(current_price, 2),
-                "total_value": round(total_value, 2),
-                "ai_suggestion": suggestion
+                "buy_price": f"${buy_price}",
+                "current_price": f"${current_price:.2f}",
+                "total_value": f"${total_value:.2f}",
+                "ai_suggestion": ai_suggestion
             })
 
-            total_invested += invested
-            current_value += total_value
+        gain_loss = total_current_value - total_invested
 
-        gain_loss = round(current_value - total_invested, 2)
-
-        return render_template('dashboard.html',
+        return render_template("dashboard.html",
                                portfolio=portfolio,
-                               total_invested=round(total_invested, 2),
-                               current_value=round(current_value, 2),
-                               gain_loss=gain_loss)
+                               total_invested=f"${total_invested}",
+                               total_current_value=f"${total_current_value:.2f}",
+                               gain_loss=f"${gain_loss:.2f}")
 
     return render_template("dashboard.html", portfolio=None)
-
-if __name__ == "__main__":
-    app.run(debug=True)
