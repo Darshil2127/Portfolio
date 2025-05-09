@@ -2,152 +2,100 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>FinFuse Portfolio Dashboard</title>
+  <title>FinFuse Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="300" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="light-mode">
 
-<div id="dashboard" class="dashboard-wrapper">
-  <!-- Header -->
-  <div class="dashboard-header">
-    <div class="header-left">
+<div class="dashboard-container">
+  <header class="dashboard-header">
+    <div class="logo-title">
       <img src="{{ url_for('static', filename='logo.png') }}" alt="FinFuse Logo" class="logo-img">
-      <h1>FinFuse Portfolio Dashboard</h1>
+      <h1>FinFuse Portfolio</h1>
     </div>
-    <div class="header-right">
-      <button onclick="downloadPDF()">Export to PDF</button>
-      <button onclick="toggleDarkMode()" id="darkToggle">🌙</button>
+    <div>
+      <button onclick="toggleDarkMode()">🌙</button>
     </div>
-  </div>
+  </header>
 
-  <button onclick="openModal()" class="add-stock-btn">+ Add Stock</button>
-
-  <!-- Summary -->
-  <div class="summary">
-    <p><strong>Total Invested:</strong> ${{ invested | default(0) | round(2) }}</p>
-    <p><strong>Current Value:</strong> ${{ current | default(0) | round(2) }}</p>
-    <p><strong>Gain/Loss:</strong>
-      <span style="color: {{ 'green' if gain > 0 else 'red' if gain < 0 else 'black' }};">
+  <section class="portfolio-summary">
+    <div>Total Invested: <strong>${{ invested | default(0) | round(2) }}</strong></div>
+    <div>Current Value: <strong>${{ current | default(0) | round(2) }}</strong></div>
+    <div>Gain/Loss:
+      <strong style="color: {{ 'green' if gain > 0 else 'red' if gain < 0 else 'black' }};">
         ${{ gain | default(0) | round(2) }}
-      </span>
-    </p>
-  </div>
-
-  <!-- Portfolio Table -->
-  <div class="table-wrapper">
-    <table>
-      <thead>
-        <tr>
-          <th>Ticker</th>
-          <th>Quantity</th>
-          <th>Buy Price</th>
-          <th>Current Price</th>
-          <th>Total Value</th>
-          <th>AI Suggestion</th>
-          <th>AI Reason</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for stock in portfolio %}
-        <tr>
-          <td><a href="https://finance.yahoo.com/quote/{{ stock['Ticker'] }}" target="_blank">{{ stock['Ticker'] }}</a></td>
-          <td>{{ stock['Quantity'] }}</td>
-          <td>${{ stock['Buy Price'] }}</td>
-          <td>${{ stock['Current Price'] | round(2) }}</td>
-          <td>${{ stock['Total Value'] | round(2) }}</td>
-          <td style="color: {% if stock['AI Suggestion'] == 'BUY' %}green{% elif stock['AI Suggestion'] == 'SELL' %}red{% else %}gray{% endif %};">
-            {{ stock['AI Suggestion'] }}
-          </td>
-          <td>{{ stock['AI Reason'] }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Modal -->
-  <div id="stockModal" class="modal">
-    <div class="modal-content">
-      <span class="close" onclick="closeModal()">&times;</span>
-      <h2>Add Stock</h2>
-      <form id="addStockForm" onsubmit="addStock(event)">
-        <input type="text" id="ticker" placeholder="Ticker (e.g. AAPL)" required>
-        <input type="number" id="quantity" placeholder="Quantity" required>
-        <input type="number" id="buyPrice" placeholder="Buy Price" step="0.01" required>
-        <button type="submit">Add to Portfolio</button>
-      </form>
-      <p id="priceResult" style="margin-top: 10px; font-size: 0.9rem;"></p>
+      </strong>
     </div>
-  </div>
+  </section>
+
+  <section class="stock-cards">
+    {% for stock in portfolio %}
+    <div class="stock-card">
+      <div class="card-header">
+        <h2>{{ stock['Ticker'] }}</h2>
+        <span class="ai-suggestion {{ stock['AI Suggestion']|lower }}">{{ stock['AI Suggestion'] }}</span>
+      </div>
+      <div class="card-body">
+        <p>Quantity: {{ stock['Quantity'] }}</p>
+        <p>Buy Price: ${{ stock['Buy Price'] }}</p>
+        <p>Current Price: ${{ stock['Current Price'] | round(2) }}</p>
+        <p>Total Value: ${{ stock['Total Value'] | round(2) }}</p>
+        <p class="ai-reason">{{ stock['AI Reason'] }}</p>
+        <canvas id="chart-{{ loop.index }}" height="60"></canvas>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section class="news-section">
+    <h2>Latest News</h2>
+    {% for article in news %}
+    <div class="news-item">
+      <h3>{{ article['title'] }}</h3>
+      <p>{{ article['description'][:140] }}...</p>
+      <a href="{{ article['url'] }}" target="_blank">Read More</a>
+    </div>
+    {% endfor %}
+  </section>
 </div>
 
 <script>
-const FINNHUB_API = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag";
-
-function openModal() {
-  document.getElementById("stockModal").style.display = "block";
+function toggleDarkMode() {
+  document.body.classList.toggle('dark-mode');
 }
 
-function closeModal() {
-  document.getElementById("stockModal").style.display = "none";
-}
+// Example placeholder data for sparklines
+const chartData = [
+  {% for stock in portfolio %}
+    [{{ stock['Buy Price'] }}, {{ stock['Current Price'] | round(2) }}],
+  {% endfor %}
+];
 
-async function getCurrentPrice(symbol) {
-  try {
-    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API}`);
-    const data = await res.json();
-    return parseFloat(data.c || 0);
-  } catch {
-    return 0;
-  }
-}
-
-async function addStock(e) {
-  e.preventDefault();
-  const ticker = document.getElementById("ticker").value.toUpperCase();
-  const quantity = parseFloat(document.getElementById("quantity").value);
-  const buyPrice = parseFloat(document.getElementById("buyPrice").value);
-  const currentPrice = await getCurrentPrice(ticker);
-  const totalValue = currentPrice * quantity;
-
-  const tbody = document.querySelector("table tbody");
-  const row = tbody.insertRow();
-
-  row.innerHTML = `
-    <td><a href="https://finance.yahoo.com/quote/${ticker}" target="_blank">${ticker}</a></td>
-    <td>${quantity}</td>
-    <td>$${buyPrice.toFixed(2)}</td>
-    <td>$${currentPrice.toFixed(2)}</td>
-    <td>$${totalValue.toFixed(2)}</td>
-    <td style="color:gray;">HOLD</td>
-    <td>Manual entry – AI pending</td>
-  `;
-
-  closeModal();
-  e.target.reset();
-  updateSummary(buyPrice * quantity, totalValue);
-}
-
-function updateSummary(investedAdd, currentAdd) {
-  const investedElem = document.querySelector(".summary").children[0];
-  const currentElem = document.querySelector(".summary").children[1];
-  const gainElem = document.querySelector(".summary").children[2].children[0];
-
-  let invested = parseFloat(investedElem.textContent.replace(/[^0-9.-]+/g, ""));
-  let current = parseFloat(currentElem.textContent.replace(/[^0-9.-]+/g, ""));
-  invested += investedAdd;
-  current += currentAdd;
-
-  investedElem.innerHTML = `<strong>Total Invested:</strong> $${invested.toFixed(2)}`;
-  currentElem.innerHTML = `<strong>Current Value:</strong> $${current.toFixed(2)}`;
-  const gain = current - invested;
-  gainElem.textContent = `$${gain.toFixed(2)}`;
-  gainElem.style.color = gain > 0 ? "green" : gain < 0 ? "red" : "black";
-}
+chartData.forEach((data, i) => {
+  const ctx = document.getElementById(`chart-${i + 1}`).getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Buy', 'Now'],
+      datasets: [{
+        data,
+        borderColor: '#1f77b4',
+        tension: 0.4,
+        fill: false,
+        pointRadius: 0
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { display: false }
+      }
+    }
+  });
+});
 </script>
 
 </body>
