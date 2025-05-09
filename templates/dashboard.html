@@ -5,38 +5,25 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
             padding: 40px;
         }
-        h2 {
-            color: #003366;
-        }
         table {
-            border-collapse: collapse;
             width: 100%;
-            background-color: white;
-            margin-top: 20px;
+            border-collapse: collapse;
         }
         th, td {
+            padding: 12px;
+            border: 1px solid #ccc;
             text-align: center;
-            padding: 10px;
-            border: 1px solid #ddd;
         }
         th {
             background-color: #003366;
             color: white;
         }
-        tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-        .buy { color: green; font-weight: bold; }
-        .sell { color: red; font-weight: bold; }
-        .hold { color: orange; font-weight: bold; }
-        .summary {
-            background-color: #e9ecef;
-            padding: 20px;
-            margin-top: 20px;
-            border-radius: 6px;
+        .buy { color: green; }
+        .sell { color: red; }
+        .metrics {
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -50,37 +37,31 @@
     </form>
 
     {% if portfolio %}
-    <div class="summary">
-        <p><strong>Total Invested:</strong> ${{ total_invested }}</p>
-        <p><strong>Current Value:</strong> ${{ current_value }}</p>
-        <p><strong>Gain/Loss:</strong> ${{ gain_loss }}</p>
+    <div class="metrics">
+        <p><strong>Total Invested:</strong> {{ total_invested }}</p>
+        <p><strong>Current Value:</strong> {{ total_current_value }}</p>
+        <p><strong>Gain/Loss:</strong> {{ gain_loss }}</p>
     </div>
 
     <table>
-        <thead>
-            <tr>
-                <th>Ticker</th>
-                <th>Quantity</th>
-                <th>Buy Price ($)</th>
-                <th>Current Price ($)</th>
-                <th>Total Value ($)</th>
-                <th>AI Suggestion</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in portfolio %}
-            <tr>
-                <td>{{ item.ticker }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>{{ item.buy_price }}</td>
-                <td>{{ item.current_price }}</td>
-                <td>{{ item.total_value }}</td>
-                <td class="{% if item.ai_suggestion == 'BUY' %}buy{% elif item.ai_suggestion == 'SELL' %}sell{% else %}hold{% endif %}">
-                    {{ item.ai_suggestion }}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
+        <tr>
+            <th>Ticker</th>
+            <th>Quantity</th>
+            <th>Buy Price</th>
+            <th>Current Price</th>
+            <th>Total Value</th>
+            <th>AI Suggestion</th>
+        </tr>
+        {% for stock in portfolio %}
+        <tr>
+            <td>{{ stock.ticker }}</td>
+            <td>{{ stock.quantity }}</td>
+            <td>{{ stock.buy_price }}</td>
+            <td>{{ stock.current_price }}</td>
+            <td>{{ stock.total_value }}</td>
+            <td class="{{ 'buy' if stock.ai_suggestion == 'BUY' else 'sell' }}">{{ stock.ai_suggestion }}</td>
+        </tr>
+        {% endfor %}
     </table>
     {% endif %}
 
