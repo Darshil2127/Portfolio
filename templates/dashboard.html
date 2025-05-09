@@ -24,6 +24,8 @@
     </div>
   </div>
 
+  <button onclick="openModal()" class="add-stock-btn">+ Add Stock</button>
+
   <!-- Summary -->
   <div class="summary">
     <p><strong>Total Invested:</strong> ${{ invested | default(0) | round(2) }}</p>
@@ -67,71 +69,85 @@
     </table>
   </div>
 
-  <!-- Uploaded News -->
-  <h2>📰 Latest News Related to Your Stocks</h2>
-  {% for article in news %}
-    <div class="news-card">
-      <h3>{{ article['title'] }}</h3>
-      <p>{{ article['description'][:150] }}...</p>
-      <a href="{{ article['url'] }}" target="_blank">Read More</a>
+  <!-- Modal -->
+  <div id="stockModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h2>Add Stock</h2>
+      <form id="addStockForm" onsubmit="addStock(event)">
+        <input type="text" id="ticker" placeholder="Ticker (e.g. AAPL)" required>
+        <input type="number" id="quantity" placeholder="Quantity" required>
+        <input type="number" id="buyPrice" placeholder="Buy Price" step="0.01" required>
+        <button type="submit">Add to Portfolio</button>
+      </form>
+      <p id="priceResult" style="margin-top: 10px; font-size: 0.9rem;"></p>
     </div>
-  {% endfor %}
-
-  <!-- Live Auto-Refreshing News -->
-  <h2>⚡ Live Market News (Auto-refreshes)</h2>
-  <div id="live-news"></div>
+  </div>
 </div>
 
-<!-- Scripts -->
 <script>
-function downloadPDF() {
-  const pdfArea = document.getElementById("pdf-area");
-  html2canvas(pdfArea).then(canvas => {
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jspdf.jsPDF("p", "mm", "a4");
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const imgWidth = pageWidth - 20;
-    const imgHeight = canvas.height * imgWidth / canvas.width;
-    pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
-    pdf.save("FinFuse-Portfolio.pdf");
-  });
-}
-  
-function toggleDarkMode() {
-  const body = document.body;
-  body.classList.toggle("dark-mode");
-  const isDark = body.classList.contains("dark-mode");
-  document.getElementById("darkToggle").textContent = isDark ? "☀" : "🌙";
+const FINNHUB_API = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag";
+
+function openModal() {
+  document.getElementById("stockModal").style.display = "block";
 }
 
-function fetchLiveNews() {
-  fetch("/api/news")
-    .then(res => res.json())
-    .then(data => {
-      const container = document.getElementById("live-news");
-      container.innerHTML = "";
-      const seen = new Set();
-      data.news.forEach(article => {
-        const key = article.title || article.url;
-        if (seen.has(key)) return;
-        seen.add(key);
-        const tag = article.entities?.[0]?.type?.toUpperCase() || "NEWS";
-        const div = document.createElement("div");
-        div.className = "news-card";
-        div.innerHTML = `
-          <div class="news-tag">${tag}</div>
-          <h4>${article.title}</h4>
-          <p>${article.description?.slice(0, 150)}...</p>
-          <a href="${article.url}" target="_blank">Read More</a>
-        `;
-        container.appendChild(div);
-      });
-    })
-    .catch(err => console.error("News fetch failed:", err));
+function closeModal() {
+  document.getElementById("stockModal").style.display = "none";
 }
 
-fetchLiveNews();
-setInterval(fetchLiveNews, 30000);
+async function getCurrentPrice(symbol) {
+  try {
+    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API}`);
+    const data = await res.json();
+    return parseFloat(data.c || 0);
+  } catch {
+    return 0;
+  }
+}
+
+async function addStock(e) {
+  e.preventDefault();
+  const ticker = document.getElementById("ticker").value.toUpperCase();
+  const quantity = parseFloat(document.getElementById("quantity").value);
+  const buyPrice = parseFloat(document.getElementById("buyPrice").value);
+  const currentPrice = await getCurrentPrice(ticker);
+  const totalValue = currentPrice * quantity;
+
+  const tbody = document.querySelector("table tbody");
+  const row = tbody.insertRow();
+
+  row.innerHTML = `
+    <td><a href="https://finance.yahoo.com/quote/${ticker}" target="_blank">${ticker}</a></td>
+    <td>${quantity}</td>
+    <td>$${buyPrice.toFixed(2)}</td>
+    <td>$${currentPrice.toFixed(2)}</td>
+    <td>$${totalValue.toFixed(2)}</td>
+    <td style="color:gray;">HOLD</td>
+    <td>Manual entry – AI pending</td>
+  `;
+
+  closeModal();
+  e.target.reset();
+  updateSummary(buyPrice * quantity, totalValue);
+}
+
+function updateSummary(investedAdd, currentAdd) {
+  const investedElem = document.querySelector(".summary").children[0];
+  const currentElem = document.querySelector(".summary").children[1];
+  const gainElem = document.querySelector(".summary").children[2].children[0];
+
+  let invested = parseFloat(investedElem.textContent.replace(/[^0-9.-]+/g, ""));
+  let current = parseFloat(currentElem.textContent.replace(/[^0-9.-]+/g, ""));
+  invested += investedAdd;
+  current += currentAdd;
+
+  investedElem.innerHTML = `<strong>Total Invested:</strong> $${invested.toFixed(2)}`;
+  currentElem.innerHTML = `<strong>Current Value:</strong> $${current.toFixed(2)}`;
+  const gain = current - invested;
+  gainElem.textContent = `$${gain.toFixed(2)}`;
+  gainElem.style.color = gain > 0 ? "green" : gain < 0 ? "red" : "black";
+}
 </script>
 
 </body>
