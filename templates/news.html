@@ -1,13 +1,21 @@
 <!DOCTYPE html>
 <html>
-<head><title>News for {{ ticker }}</title></head>
+<head>
+    <title>{{ ticker }} News - FinFuse</title>
+</head>
 <body>
-    <h2>Latest News for {{ ticker }}</h2>
+    <h2>📰 Latest News for {{ ticker }}</h2>
+    <a href="/">← Back to Dashboard</a>
     <ul>
-        {% for article in news %}
-            <li><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></li>
+        {% for article in articles %}
+            <li>
+                <a href="{{ article.url }}" target="_blank"><strong>{{ article.title }}</strong></a><br>
+                <em>{{ article.source }}</em> - {{ article.published_at }}<br>
+                {{ article.description }}
+            </li>
+        {% else %}
+            <p>No news found.</p>
         {% endfor %}
     </ul>
-    <a href="/">← Back to Dashboard</a>
 </body>
 </html>
