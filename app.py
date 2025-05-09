@@ -10,14 +10,22 @@ ALPHA_API_KEY = "HMTZ4KZAG65XW27N"
 MARKETAUX_API = "https://api.marketaux.com/v1/news/all?api_token=b4a0c3289954e7fdd84253d28aabf7ed&limit=5&filter_entities=true"
 
 # Function to fetch current price
+import time
+
 def get_current_price(symbol):
     url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_API_KEY}"
     try:
         response = requests.get(url)
         data = response.json()
-        return float(data["Global Quote"]["05. price"])
-    except (KeyError, ValueError, TypeError):
-        return 0.0
+        price = data.get("Global Quote", {}).get("05. price", None)
+        if price:
+            return float(price)
+    except:
+        pass
+    return 0.0
+
+time.sleep(15)  # Stay under Alpha Vantage free-tier limit
+
 
 # Main route with upload
 @app.route("/", methods=["GET", "POST"])
