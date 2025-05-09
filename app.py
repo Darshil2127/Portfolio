@@ -1,5 +1,4 @@
 import os
-import time
 import pandas as pd
 import requests
 from flask import Flask, render_template, request
@@ -10,30 +9,28 @@ app.config['PROPAGATE_EXCEPTIONS'] = True
 app.config['DEBUG'] = True
 
 # API Keys
-ALPHA_API_KEY = "HMTZ4KZAG65XW27N"
+FINNHUB_API_KEY = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag"
 MARKETAUX_API_TOKEN = "VQLCY5MmRKd5NoGznLXmdm62igUwqttW4eEGxZYp"
 openai.api_key = "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"
 
-# Alpha Vantage: Get current stock price
+# Finnhub: Get real-time stock price
 def get_current_price(symbol):
-    url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_API_KEY}"
+    url = f"https://finnhub.io/api/v1/quote?symbol={symbol}&token={FINNHUB_API_KEY}"
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=8)
         data = response.json()
-        price_str = data.get("Global Quote", {}).get("05. price", None)
-        if price_str:
-            return float(price_str)
+        return float(data.get("c", 0.0))  # "c" = current price
     except Exception as e:
-        print(f"[ERROR] Could not fetch price for {symbol}: {e}")
-    return 0.0
+        print(f"[ERROR] Finnhub error for {symbol}: {e}")
+        return 0.0
 
-# OpenAI: Get batch AI suggestions
+# OpenAI AI suggestion with reasoning
 def get_batch_ai_suggestions(stocks, news_summary):
     try:
         prompt = (
-            f"You are an investment advisor. Based on this portfolio and recent news, suggest BUY, SELL, or HOLD for each stock "
-            f"with a short reason.\n\n"
-            f"Market News:\n{news_summary}\n\n"
+            f"You are an investment advisor. Based on the portfolio and recent market news, give BUY, SELL, or HOLD for each stock "
+            f"with a brief reason.\n\n"
+            f"News Summary:\n{news_summary}\n\n"
             f"Portfolio:\n" +
             "\n".join([f"{s['Ticker']}: Buy at {s['Buy Price']}, current {s['Current Price']}" for s in stocks]) +
             "\n\nFormat:\nTICKER - DECISION: REASON"
@@ -60,37 +57,37 @@ def get_batch_ai_suggestions(stocks, news_summary):
                     result[ticker] = (decision, reason)
         return result
     except Exception as e:
-        print(f"[ERROR] OpenAI failed: {e}")
+        print(f"[ERROR] OpenAI error: {e}")
         return {}
 
-# Home + Upload
+# Index route — upload and process CSV
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
         file = request.files["file"]
         if file:
-            df = pd.read_csv(file).head(3)  # Limit to 3 for memory safety
+            df = pd.read_csv(file).head(3)  # Limit for Render memory
             tickers = ",".join(df["Ticker"].tolist())
             total_invested = current_value = 0.0
 
-            # Fetch news filtered by tickers
+            # Get news filtered by tickers
             try:
                 news_url = f"https://api.marketaux.com/v1/news/all?symbols={tickers}&language=en&limit=10&api_token={MARKETAUX_API_TOKEN}"
                 news_data = requests.get(news_url).json().get("data", [])
                 news_summary = " ".join([a.get("description", "") for a in news_data])
             except Exception as e:
-                print(f"[ERROR] MarketAux failed: {e}")
+                print(f"[ERROR] MarketAux error: {e}")
                 news_data = []
                 news_summary = ""
 
-            # Build enriched stock list
+            # Enrich data with prices
             enriched = []
             for _, row in df.iterrows():
                 ticker = row["Ticker"]
                 buy_price = row["Buy Price"]
                 quantity = row["Quantity"]
-                current_price = get_current_price(ticker)
 
+                current_price = get_current_price(ticker)
                 total_value = current_price * quantity
                 total_invested += buy_price * quantity
                 current_value += total_value
@@ -103,9 +100,8 @@ def index():
                     "Total Value": total_value
                 })
 
-            # Get AI suggestions
+            # AI Decisions
             ai_results = get_batch_ai_suggestions(enriched, news_summary)
-
             for stock in enriched:
                 suggestion, reason = ai_results.get(stock["Ticker"], ("HOLD", "AI skipped"))
                 stock["AI Suggestion"] = suggestion
@@ -122,10 +118,6 @@ def index():
 
     return render_template("index.html")
 
-# Fallback dashboard route
 @app.route("/dashboard")
 def dashboard():
     return render_template("index.html")
-
-if __name__ == "__main__":
-    app.run(debug=True)
