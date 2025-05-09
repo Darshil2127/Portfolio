@@ -1,20 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>FinFuse Portfolio Dashboard</title>
-    <meta http-equiv="refresh" content="300"> <!-- Auto-refresh every 5 mins -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8" />
+  <title>FinFuse Portfolio Dashboard</title>
+  <meta http-equiv="refresh" content="300" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </head>
 <body style="font-family: 'Segoe UI', sans-serif; background: #f5f7fa; padding: 2rem;">
 
-<div style="max-width: 1200px; margin: auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 0 12px rgba(0,0,0,0.1);">
-    <h1 style="text-align:center;">📊 FinFuse Portfolio Dashboard</h1>
+<div id="dashboard" style="max-width: 1200px; margin: auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 0 12px rgba(0,0,0,0.1);">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="FinFuse Logo" style="height: 50px;">
+        <h1>📊 FinFuse Portfolio Dashboard</h1>
+        <button onclick="downloadPDF()" style="padding: 0.5rem 1rem; background: #1f77b4; color: white; border: none; border-radius: 6px; cursor: pointer;">Export to PDF</button>
+    </div>
 
     <div style="margin: 2rem 0; font-size: 1.2rem;">
         <p><strong>Total Invested:</strong> ${{ invested | default(0) | round(2) }}</p>
         <p><strong>Current Value:</strong> ${{ current | default(0) | round(2) }}</p>
-        <p><strong>Gain/Loss:</strong> ${{ gain | default(0) | round(2) }}</p>
+        <p><strong>Gain/Loss:</strong>
+            <span style="color: {{ 'green' if gain > 0 else 'red' if gain < 0 else 'black' }};">
+                ${{ gain | default(0) | round(2) }}
+            </span>
+        </p>
     </div>
 
     <table style="width: 100%; border-collapse: collapse;">
@@ -49,11 +59,7 @@
     <div class="news-section">
         <h2 style="margin-top: 3rem;">📰 Latest News Related to Your Stocks</h2>
         {% for article in news %}
-            {% set highlight = "fed" in article['title']|lower or
-                               "interest" in article['title']|lower or
-                               "inflation" in article['title']|lower or
-                               "war" in article['title']|lower or
-                               "tariff" in article['title']|lower %}
+            {% set highlight = "fed" in article['title']|lower or "interest" in article['title']|lower or "inflation" in article['title']|lower or "war" in article['title']|lower or "tariff" in article['title']|lower %}
             <div class="news-card" style="{% if highlight %}border-left: 5px solid red;{% endif %}">
                 <h3>{% if highlight %}<span style="color:red">⚠</span> {% endif %}{{ article['title'] }}</h3>
                 <p>{{ article['description'][:150] }}...</p>
@@ -62,6 +68,23 @@
         {% endfor %}
     </div>
 </div>
+
+<script>
+  function downloadPDF() {
+    const dashboard = document.getElementById("dashboard");
+    html2canvas(dashboard).then(canvas => {
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jspdf.jsPDF("p", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth - 20;
+      const imgHeight = canvas.height * imgWidth / canvas.width;
+
+      pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
+      pdf.save("FinFuse-Portfolio.pdf");
+    });
+  }
+</script>
 
 </body>
 </html>
