@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>FinFuse Portfolio Dashboard</title>
+    <meta http-equiv="refresh" content="300"> <!-- Auto-refresh every 5 mins -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body style="font-family: 'Segoe UI', sans-serif; background: #f5f7fa; padding: 2rem;">
@@ -11,9 +12,9 @@
     <h1 style="text-align:center;">📊 FinFuse Portfolio Dashboard</h1>
 
     <div style="margin: 2rem 0; font-size: 1.2rem;">
-        <p><strong>Total Invested:</strong> ${{ invested | round(2) }}</p>
-        <p><strong>Current Value:</strong> ${{ current | round(2) }}</p>
-        <p><strong>Gain/Loss:</strong> ${{ gain | round(2) }}</p>
+        <p><strong>Total Invested:</strong> ${{ invested | default(0) | round(2) }}</p>
+        <p><strong>Current Value:</strong> ${{ current | default(0) | round(2) }}</p>
+        <p><strong>Gain/Loss:</strong> ${{ gain | default(0) | round(2) }}</p>
     </div>
 
     <table style="width: 100%; border-collapse: collapse;">
@@ -46,7 +47,7 @@
     </table>
 
     <div class="news-section">
-        <h2 style="margin-top: 3rem;">📰 Latest Market News</h2>
+        <h2 style="margin-top: 3rem;">📰 Latest News Related to Your Stocks</h2>
         {% for article in news %}
             {% set highlight = "fed" in article['title']|lower or
                                "interest" in article['title']|lower or
