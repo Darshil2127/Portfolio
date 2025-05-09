@@ -85,6 +85,46 @@ body {
   text-decoration: underline;
 }
 
+.watchlist-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.watchlist-form input,
+.watchlist-form button {
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+.watchlist-form input {
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.watchlist-form button {
+  background-color: #1f77b4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.watchlist-form button:hover {
+  background-color: #155a8a;
+}
+
+.watchlist-item {
+  background: #e6f0fa;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+}
+
 /* Dark mode */
 body.dark-mode {
   background-color: #1e1e1e;
@@ -100,7 +140,8 @@ body.dark-mode .sidebar {
   background-color: #111;
 }
 
-body.dark-mode .news-item {
+body.dark-mode .news-item,
+body.dark-mode .watchlist-item {
   background-color: #3a3a3a;
   color: #eee;
 }
