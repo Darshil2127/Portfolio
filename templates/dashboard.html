@@ -29,7 +29,12 @@
     </section>
 
     <section id="watchlist" class="tab-section" style="display: none;">
-      <h1>Watchlist (Coming Soon)</h1>
+      <h1>Watchlist</h1>
+      <form class="watchlist-form" onsubmit="addToWatchlist(event)">
+        <input type="text" id="watchlist-symbol" placeholder="Enter Ticker (e.g. AAPL)" required />
+        <button type="submit">Add</button>
+      </form>
+      <div id="watchlist-container"></div>
     </section>
 
     <section id="news" class="tab-section" style="display: none;">
@@ -53,6 +58,35 @@ function showSection(section) {
 
 function toggleDarkMode() {
   document.body.classList.toggle('dark-mode');
+}
+
+const FINNHUB_API_KEY = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag";
+
+async function addToWatchlist(e) {
+  e.preventDefault();
+  const input = document.getElementById("watchlist-symbol");
+  const symbol = input.value.trim().toUpperCase();
+  input.value = "";
+
+  if (!symbol) return;
+
+  const price = await getWatchPrice(symbol);
+  const container = document.getElementById("watchlist-container");
+
+  const item = document.createElement("div");
+  item.className = "watchlist-item";
+  item.innerHTML = `<span>${symbol}</span><span>$${price.toFixed(2)}</span>`;
+  container.appendChild(item);
+}
+
+async function getWatchPrice(symbol) {
+  try {
+    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`);
+    const data = await res.json();
+    return parseFloat(data.c || 0);
+  } catch {
+    return 0;
+  }
 }
 </script>
 </body>
