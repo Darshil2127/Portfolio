@@ -1,4 +1,5 @@
 import os
+import time
 from flask import Flask, render_template, request, redirect
 import pandas as pd
 import requests
@@ -29,17 +30,19 @@ def fetch_current_price(ticker):
 
 def get_news(ticker):
     url = f"https://api.marketaux.com/v1/news/all?symbols={ticker}&language=en&api_token={MARKETAUX_API_KEY}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        news_data = response.json().get('data', [])
-        return news_data[:5]
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.json().get("data", [])[:5]
+    except:
+        return []
     return []
 
 @app.route('/')
 def index():
     return render_template("index.html")
 
-@app.route('/dashboard', methods=['GET', 'POST'])
+@app.route('/dashboard', methods=['POST'])
 def dashboard():
     if request.method == 'POST':
         file = request.files['file']
@@ -51,12 +54,14 @@ def dashboard():
 
             for _, row in df.iterrows():
                 ticker = row['Ticker']
-                quantity = row['Quantity']
-                buy_price = row['Buy Price']
+                quantity = float(row['Quantity'])
+                buy_price = float(row['Buy Price'])
                 invested = quantity * buy_price
-                current_price = fetch_current_price(ticker)
-                value_now = quantity * current_price
 
+                current_price = fetch_current_price(ticker)
+                time.sleep(12)  # ⏳ Avoid hitting API limit
+
+                value_now = quantity * current_price
                 suggestion = "BUY" if current_price >= buy_price else "SELL"
 
                 portfolio_data.append({
@@ -75,9 +80,10 @@ def dashboard():
 
             return render_template("dashboard.html",
                                    portfolio=portfolio_data,
-                                   total_invested=f"${total_invested}",
+                                   total_invested=f"${round(total_invested, 2)}",
                                    current_value=f"${round(current_value, 2)}",
                                    gain_loss=f"${round(gain_loss, 2)}")
+
     return redirect('/')
 
 @app.route('/news/<ticker>')
