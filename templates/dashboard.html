@@ -1,102 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FinFuse Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="light-mode">
-
-<div class="dashboard-container">
-  <header class="dashboard-header">
-    <div class="logo-title">
-      <img src="{{ url_for('static', filename='logo.png') }}" alt="FinFuse Logo" class="logo-img">
-      <h1>FinFuse Portfolio</h1>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="logo-section">
+      <img src="{{ url_for('static', filename='logo.png') }}" class="logo-img" alt="FinFuse Logo">
+      <h2>FinFuse</h2>
     </div>
-    <div>
-      <button onclick="toggleDarkMode()">🌙</button>
-    </div>
-  </header>
+    <ul class="nav-links">
+      <li onclick="showSection('portfolio')">📊 Portfolio</li>
+      <li onclick="showSection('watchlist')">👁️ Watchlist</li>
+      <li onclick="showSection('news')">📰 News</li>
+      <li onclick="toggleDarkMode()">🌗 Toggle Theme</li>
+    </ul>
+  </nav>
 
-  <section class="portfolio-summary">
-    <div>Total Invested: <strong>${{ invested | default(0) | round(2) }}</strong></div>
-    <div>Current Value: <strong>${{ current | default(0) | round(2) }}</strong></div>
-    <div>Gain/Loss:
-      <strong style="color: {{ 'green' if gain > 0 else 'red' if gain < 0 else 'black' }};">
-        ${{ gain | default(0) | round(2) }}
-      </strong>
-    </div>
-  </section>
+  <main class="main-content">
+    <section id="portfolio" class="tab-section">
+      <h1>Portfolio Overview</h1>
+      <!-- Summary, cards, charts go here -->
+    </section>
 
-  <section class="stock-cards">
-    {% for stock in portfolio %}
-    <div class="stock-card">
-      <div class="card-header">
-        <h2>{{ stock['Ticker'] }}</h2>
-        <span class="ai-suggestion {{ stock['AI Suggestion']|lower }}">{{ stock['AI Suggestion'] }}</span>
+    <section id="watchlist" class="tab-section" style="display: none;">
+      <h1>Watchlist (Coming Soon)</h1>
+    </section>
+
+    <section id="news" class="tab-section" style="display: none;">
+      <h1>Market News</h1>
+      {% for article in news %}
+      <div class="news-item">
+        <h3>{{ article['title'] }}</h3>
+        <p>{{ article['description'][:150] }}...</p>
+        <a href="{{ article['url'] }}" target="_blank">Read More</a>
       </div>
-      <div class="card-body">
-        <p>Quantity: {{ stock['Quantity'] }}</p>
-        <p>Buy Price: ${{ stock['Buy Price'] }}</p>
-        <p>Current Price: ${{ stock['Current Price'] | round(2) }}</p>
-        <p>Total Value: ${{ stock['Total Value'] | round(2) }}</p>
-        <p class="ai-reason">{{ stock['AI Reason'] }}</p>
-        <canvas id="chart-{{ loop.index }}" height="60"></canvas>
-      </div>
-    </div>
-    {% endfor %}
-  </section>
-
-  <section class="news-section">
-    <h2>Latest News</h2>
-    {% for article in news %}
-    <div class="news-item">
-      <h3>{{ article['title'] }}</h3>
-      <p>{{ article['description'][:140] }}...</p>
-      <a href="{{ article['url'] }}" target="_blank">Read More</a>
-    </div>
-    {% endfor %}
-  </section>
+      {% endfor %}
+    </section>
+  </main>
 </div>
 
 <script>
+function showSection(section) {
+  document.querySelectorAll('.tab-section').forEach(el => el.style.display = 'none');
+  document.getElementById(section).style.display = 'block';
+}
+
 function toggleDarkMode() {
   document.body.classList.toggle('dark-mode');
 }
-
-// Example placeholder data for sparklines
-const chartData = [
-  {% for stock in portfolio %}
-    [{{ stock['Buy Price'] }}, {{ stock['Current Price'] | round(2) }}],
-  {% endfor %}
-];
-
-chartData.forEach((data, i) => {
-  const ctx = document.getElementById(`chart-${i + 1}`).getContext('2d');
-  new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ['Buy', 'Now'],
-      datasets: [{
-        data,
-        borderColor: '#1f77b4',
-        tension: 0.4,
-        fill: false,
-        pointRadius: 0
-      }]
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { display: false },
-        y: { display: false }
-      }
-    }
-  });
-});
 </script>
-
 </body>
 </html>
