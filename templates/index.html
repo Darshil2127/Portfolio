@@ -1,18 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>FinFuse Portfolio Upload</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8">
+  <title>Upload Portfolio – FinFuse</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body class="upload-page">
-    <div class="upload-container">
-        <img src="https://img.icons8.com/ios-filled/100/portfolio.png" alt="Portfolio Icon" />
-        <h1>FinFuse Portfolio Dashboard</h1>
-        <form method="POST" enctype="multipart/form-data">
-            <input type="file" name="file" class="file-input" required>
-            <button type="submit" class="upload-btn">Upload Portfolio</button>
-        </form>
-    </div>
+<body class="upload-body">
+  <div class="upload-container">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="FinFuse Logo" class="upload-logo">
+    <h1>FinFuse Portfolio Dashboard</h1>
+    <form action="/" method="post" enctype="multipart/form-data">
+      <input type="file" name="file" required>
+      <button type="submit">Upload Portfolio</button>
+    </form>
+  </div>
 </body>
 </html>
