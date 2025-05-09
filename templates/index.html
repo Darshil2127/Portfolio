@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Portfolio Upload</title>
+    <title>Upload Portfolio</title>
 </head>
 <body>
-    <h2>Upload Your Portfolio CSV</h2>
-    <form method="POST" enctype="multipart/form-data">
+    <h2>Upload Your Portfolio</h2>
+    <form action="/dashboard" method="POST" enctype="multipart/form-data">
         <input type="file" name="file" accept=".csv" required>
-        <button type="submit">Analyze</button>
+        <button type="submit">Upload</button>
     </form>
 </body>
 </html>
