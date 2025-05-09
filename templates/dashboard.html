@@ -7,53 +7,60 @@
 </head>
 <body style="font-family: 'Segoe UI', sans-serif; background: #f5f7fa; padding: 2rem;">
 
-    <div style="max-width: 1200px; margin: auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 0 12px rgba(0,0,0,0.1);">
-        <h1 style="text-align:center;">📊 FinFuse Portfolio Dashboard</h1>
+<div style="max-width: 1200px; margin: auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 0 12px rgba(0,0,0,0.1);">
+    <h1 style="text-align:center;">📊 FinFuse Portfolio Dashboard</h1>
 
-        <div style="margin: 2rem 0; font-size: 1.2rem;">
-            <p><strong>Total Invested:</strong> ${{ invested | round(2) }}</p>
-            <p><strong>Current Value:</strong> ${{ current | round(2) }}</p>
-            <p><strong>Gain/Loss:</strong> ${{ gain | round(2) }}</p>
-        </div>
-
-        <table style="width: 100%; border-collapse: collapse;">
-            <thead style="background-color: #002244; color: white;">
-                <tr>
-                    <th style="padding: 10px;">Ticker</th>
-                    <th>Quantity</th>
-                    <th>Buy Price</th>
-                    <th>Current Price</th>
-                    <th>Total Value</th>
-                    <th>AI Suggestion</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for stock in portfolio %}
-                <tr style="text-align: center; border-bottom: 1px solid #ddd;">
-                    <td><a href="https://finance.yahoo.com/quote/{{ stock['Ticker'] }}" target="_blank">{{ stock['Ticker'] }}</a></td>
-                    <td>{{ stock['Quantity'] }}</td>
-                    <td>${{ stock['Buy Price'] }}</td>
-                    <td>${{ stock['Current Price'] | round(2) }}</td>
-                    <td>${{ stock['Total Value'] | round(2) }}</td>
-                    <td style="color: {% if stock['AI Suggestion'] == 'BUY' %}green{% else %}red{% endif %};">
-                        {{ stock['AI Suggestion'] }}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <div class="news-section">
-            <h2 style="margin-top: 3rem;">📰 Latest Market News</h2>
-            {% for article in news %}
-                <div class="news-card">
-                    <h3>{{ article['title'] }}</h3>
-                    <p>{{ article['description'][:150] }}...</p>
-                    <a href="{{ article['url'] }}" target="_blank">Read More</a>
-                </div>
-            {% endfor %}
-        </div>
+    <div style="margin: 2rem 0; font-size: 1.2rem;">
+        <p><strong>Total Invested:</strong> ${{ invested | round(2) }}</p>
+        <p><strong>Current Value:</strong> ${{ current | round(2) }}</p>
+        <p><strong>Gain/Loss:</strong> ${{ gain | round(2) }}</p>
     </div>
+
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead style="background-color: #002244; color: white;">
+            <tr>
+                <th>Ticker</th>
+                <th>Quantity</th>
+                <th>Buy Price</th>
+                <th>Current Price</th>
+                <th>Total Value</th>
+                <th>AI Suggestion</th>
+                <th>AI Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stock in portfolio %}
+            <tr style="text-align: center; border-bottom: 1px solid #ddd;">
+                <td><a href="https://finance.yahoo.com/quote/{{ stock['Ticker'] }}" target="_blank">{{ stock['Ticker'] }}</a></td>
+                <td>{{ stock['Quantity'] }}</td>
+                <td>${{ stock['Buy Price'] }}</td>
+                <td>${{ stock['Current Price'] | round(2) }}</td>
+                <td>${{ stock['Total Value'] | round(2) }}</td>
+                <td style="color: {% if stock['AI Suggestion'] == 'BUY' %}green{% elif stock['AI Suggestion'] == 'SELL' %}red{% else %}gray{% endif %};">
+                    {{ stock['AI Suggestion'] }}
+                </td>
+                <td>{{ stock['AI Reason'] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="news-section">
+        <h2 style="margin-top: 3rem;">📰 Latest Market News</h2>
+        {% for article in news %}
+            {% set highlight = "fed" in article['title']|lower or
+                               "interest" in article['title']|lower or
+                               "inflation" in article['title']|lower or
+                               "war" in article['title']|lower or
+                               "tariff" in article['title']|lower %}
+            <div class="news-card" style="{% if highlight %}border-left: 5px solid red;{% endif %}">
+                <h3>{% if highlight %}<span style="color:red">⚠</span> {% endif %}{{ article['title'] }}</h3>
+                <p>{{ article['description'][:150] }}...</p>
+                <a href="{{ article['url'] }}" target="_blank">Read More</a>
+            </div>
+        {% endfor %}
+    </div>
+</div>
 
 </body>
 </html>
