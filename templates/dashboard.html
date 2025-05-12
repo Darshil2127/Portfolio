@@ -15,25 +15,21 @@
     </div>
     <button onclick="toggleDarkMode()" class="theme-toggle">🌓 Theme</button>
   </header>
-
   <nav class="navbar">
     <button onclick="showSection('portfolio')">📊 Portfolio</button>
     <button onclick="showSection('watchlist')">👁️ Watchlist</button>
     <button onclick="showSection('news')">📰 News</button>
   </nav>
-
   <main>
     <section id="portfolio" class="tab-section">
       <form method="POST" enctype="multipart/form-data" class="upload-form">
         <input type="file" name="file" accept=".csv" required />
         <button type="submit">Upload Portfolio</button>
       </form>
-
       <h2>Portfolio Overview</h2>
       <p><strong>Total Invested:</strong> ${{ invested }}</p>
       <p><strong>Current Value:</strong> ${{ current }}</p>
       <p><strong>Gain/Loss:</strong> ${{ gain }}</p>
-
       <table>
         <thead>
           <tr>
@@ -61,7 +57,6 @@
         </tbody>
       </table>
     </section>
-
     <section id="watchlist" class="tab-section" style="display: none;">
       <h2>Watchlist</h2>
       <form id="watchlist-form" onsubmit="addToWatchlist(event)">
@@ -70,42 +65,37 @@
       </form>
       <div id="watchlist-container"></div>
     </section>
-
     <section id="news" class="tab-section" style="display: none;">
       <h2>Latest Market News</h2>
-      {% for article in news %}
-      <div class="news-card">
-        <h3>{{ article['title'] }}</h3>
-        <p>{{ article['description'][:150] }}...</p>
-        <a href="{{ article['url'] }}" target="_blank">Read More</a>
+      <div id="news-container">
+        {% for article in news %}
+        <div class="news-card">
+          <h3>{{ article['title'] }}</h3>
+          <p>{{ article['description'][:150] }}...</p>
+          <a href="{{ article['url'] }}" target="_blank">Read More</a>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
     </section>
   </main>
-
   <script>
     function showSection(sectionId) {
-      document.querySelectorAll('.tab-section').forEach(s => s.style.display = 'none');
+      document.querySelectorAll('.tab-section').forEach(el => el.style.display = 'none');
       document.getElementById(sectionId).style.display = 'block';
     }
-
     function toggleDarkMode() {
-      document.body.classList.toggle('dark-mode');
+      document.body.classList.toggle("dark-mode");
     }
-
     const FINNHUB_API_KEY = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag";
-
     async function addToWatchlist(e) {
       e.preventDefault();
       const input = document.getElementById("watchlist-symbol");
       const symbol = input.value.trim().toUpperCase();
       if (!symbol) return;
       input.value = "";
-
       const price = await fetchPrice(symbol);
       const container = document.getElementById("watchlist-container");
       const id = `chart-${symbol}-${Date.now()}`;
-
       const div = document.createElement("div");
       div.className = "watchlist-item";
       div.innerHTML = `
@@ -114,20 +104,17 @@
         <button onclick="this.parentElement.remove()">❌</button>
       `;
       container.appendChild(div);
-
       drawChart(id, price);
     }
-
     async function fetchPrice(symbol) {
       try {
-        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`);
+        const res = await fetch(\`https://finnhub.io/api/v1/quote?symbol=\${symbol}&token=\${FINNHUB_API_KEY}\`);
         const data = await res.json();
         return parseFloat(data.c || 0);
       } catch {
         return 0;
       }
     }
-
     function drawChart(canvasId, price) {
       const ctx = document.getElementById(canvasId);
       if (!ctx) return;
@@ -148,11 +135,30 @@
         }
       });
     }
-
-    // Default: show portfolio
     window.addEventListener("DOMContentLoaded", () => {
       showSection('portfolio');
+      setInterval(refreshNews, 30000);
     });
+    async function refreshNews() {
+      try {
+        const res = await fetch('/api/news');
+        const data = await res.json();
+        const container = document.getElementById("news-container");
+        container.innerHTML = "";
+        data.news.forEach(article => {
+          const div = document.createElement("div");
+          div.className = "news-card";
+          div.innerHTML = \`
+            <h3>\${article.title}</h3>
+            <p>\${article.description.slice(0, 150)}...</p>
+            <a href="\${article.url}" target="_blank">Read More</a>
+          \`;
+          container.appendChild(div);
+        });
+      } catch (e) {
+        console.error("Failed to refresh news:", e);
+      }
+    }
   </script>
 </body>
 </html>
