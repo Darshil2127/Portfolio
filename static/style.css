@@ -28,6 +28,8 @@ body {
 
 .logo-img {
   height: 40px;
+  width: auto;
+  object-fit: contain;
 }
 
 .nav-links {
@@ -50,6 +52,7 @@ body {
   flex: 1;
   padding: 2rem;
   background-color: #ffffff;
+  overflow-y: auto;
 }
 
 .tab-section {
@@ -58,6 +61,24 @@ body {
 
 .tab-section h1 {
   margin-top: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+th, td {
+  padding: 0.75rem;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+}
+
+th {
+  background-color: #002244;
+  color: white;
+  font-weight: bold;
 }
 
 .news-item {
@@ -70,15 +91,18 @@ body {
 
 .news-item h3 {
   margin: 0 0 0.5rem;
+  font-size: 1.1rem;
 }
 
 .news-item p {
-  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: #444;
 }
 
 .news-item a {
-  color: #1f77b4;
   font-weight: 500;
+  color: #1f77b4;
+  text-decoration: none;
 }
 
 .news-item a:hover {
@@ -123,6 +147,14 @@ body {
   font-weight: 500;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+button.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
 }
 
 /* Dark mode */
@@ -141,7 +173,22 @@ body.dark-mode .sidebar {
 }
 
 body.dark-mode .news-item,
-body.dark-mode .watchlist-item {
-  background-color: #3a3a3a;
-  color: #eee;
+body.dark-mode .watchlist-item,
+body.dark-mode table {
+  background-color: #333;
+  color: #f0f0f0;
+}
+
+body.dark-mode th {
+  background-color: #222;
+}
+
+body.dark-mode a {
+  color: #90cdf4;
+}
+
+body.dark-mode .watchlist-form input {
+  background-color: #444;
+  color: #fff;
+  border: 1px solid #666;
 }
