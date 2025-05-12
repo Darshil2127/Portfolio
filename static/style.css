@@ -1,98 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FinFuse Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="light-mode">
+<div class="layout">
+  <nav class="sidebar">
+    <div class="logo-section">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img"/>
+      <h2>FinFuse</h2>
+    </div>
+    <ul class="nav-links">
+      <li onclick="showSection('portfolio')">📊 Portfolio</li>
+      <li onclick="showSection('watchlist')">👁️ Watchlist</li>
+      <li onclick="showSection('news')">📰 News</li>
+    </ul>
+  </nav>
 
-body {
-  margin: 0;
-  font-family: 'Segoe UI', sans-serif;
-  background: #f5f7fa;
-  color: #333;
-  transition: background 0.3s, color 0.3s;
+  <main class="main-content">
+    <button onclick="toggleDarkMode()" class="toggle-btn">🌗</button>
+
+    <section id="portfolio" class="tab-section">
+      <h1>Portfolio Overview</h1>
+      <p><strong>Total Invested:</strong> ${{ invested | round(2) }}</p>
+      <p><strong>Current Value:</strong> ${{ current | round(2) }}</p>
+      <p><strong>Gain/Loss:</strong> ${{ gain | round(2) }}</p>
+      {% if portfolio %}
+      <table>
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Quantity</th>
+            <th>Buy Price</th>
+            <th>Current Price</th>
+            <th>Total Value</th>
+            <th>AI Suggestion</th>
+            <th>AI Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for row in portfolio %}
+          <tr>
+            <td>{{ row['Ticker'] }}</td>
+            <td>{{ row['Quantity'] }}</td>
+            <td>${{ row['Buy Price'] }}</td>
+            <td>${{ row['Current Price'] }}</td>
+            <td>${{ row['Total Value'] }}</td>
+            <td>{{ row['AI Suggestion'] }}</td>
+            <td>{{ row['AI Reason'] }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>No portfolio data available.</p>
+      {% endif %}
+    </section>
+
+    <section id="watchlist" class="tab-section">
+      <h1>Watchlist</h1>
+      <form class="watchlist-form" onsubmit="addToWatchlist(event)">
+        <input type="text" id="watchlist-symbol" placeholder="Enter Ticker (e.g. AAPL)" required />
+        <button type="submit">Add</button>
+      </form>
+      <div id="watchlist-container" class="watchlist-container"></div>
+    </section>
+
+    <section id="news" class="tab-section">
+      <h1>Market News</h1>
+      <div id="news-container">
+        {% for article in news %}
+        <div class="news-item">
+          <h3>{{ article['title'] }}</h3>
+          <p>{{ article['description'][:150] }}...</p>
+          <a href="{{ article['url'] }}" target="_blank">Read More</a>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+function showSection(id) {
+  document.querySelectorAll('.tab-section').forEach(sec => sec.style.display = 'none');
+  document.getElementById(id).style.display = 'block';
 }
-body.dark-mode {
-  background: #1c1c1c;
-  color: #eee;
+function toggleDarkMode() {
+  document.body.classList.toggle("dark-mode");
 }
-.layout {
-  display: flex;
-}
-.sidebar {
-  width: 240px;
-  background: #0c2d48;
-  color: #fff;
-  padding: 20px;
-  min-height: 100vh;
-}
-.logo-section {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.logo-img {
-  height: 32px;
-}
-.nav-links {
-  list-style: none;
-  padding: 0;
-  margin-top: 30px;
-}
-.nav-links li {
-  cursor: pointer;
-  padding: 10px 0;
-  transition: 0.2s;
-}
-.nav-links li:hover {
-  background-color: #123456;
-}
-.main-content {
-  flex-grow: 1;
-  padding: 2rem;
-  position: relative;
-}
-.toggle-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: #123456;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.tab-section {
-  animation: fadeIn 0.3s ease-in-out;
-}
-table {
-  width: 100%;
-  margin-top: 1rem;
-  border-collapse: collapse;
-}
-th, td {
-  padding: 0.75rem;
-  text-align: center;
-  border-bottom: 1px solid #ccc;
-}
-th {
-  background: #002244;
-  color: #fff;
-}
-.watchlist-form {
-  margin-bottom: 1rem;
-}
-.watchlist-container .watchlist-item {
-  padding: 10px;
-  background: #eef;
-  margin-bottom: 10px;
-  border-radius: 6px;
-}
-.news-item {
-  background: #f1f1f1;
-  padding: 1rem;
-  margin: 1rem 0;
-  border-radius: 8px;
-}
-.news-item:hover {
-  background: #e2e2e2;
-}
-@keyframes fadeIn {
-  from {opacity: 0;}
-  to {opacity: 1;}
-}
+window.onload = () => showSection('portfolio');
+</script>
+</body>
+</html>
