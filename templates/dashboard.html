@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FinFuse Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,27 +10,33 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="logo-section">
-      <img src="{{ url_for('static', filename='logo.png') }}" class="logo-img" alt="FinFuse Logo" style="height: 40px; width: auto;">
+      <img src="{{ url_for('static', filename='logo.png') }}" class="logo-img" alt="FinFuse">
       <h2>FinFuse</h2>
     </div>
     <ul class="nav-links">
       <li onclick="showSection('portfolio')">📊 Portfolio</li>
       <li onclick="showSection('watchlist')">👁️ Watchlist</li>
       <li onclick="showSection('news')">📰 News</li>
-      <li onclick="toggleDarkMode()">🌗 Toggle Theme</li>
     </ul>
+    <button class="toggle-btn" onclick="toggleDarkMode()">🌗</button>
   </nav>
 
   <main class="main-content">
-    <!-- Portfolio Section -->
     <section id="portfolio" class="tab-section">
-      <h1>Portfolio Overview</h1>
+      <h1>FinFuse Portfolio Dashboard</h1>
 
-      <p><strong>Total Invested:</strong> ${{ invested | round(2) }}</p>
-      <p><strong>Current Value:</strong> ${{ current | round(2) }}</p>
-      <p><strong>Gain/Loss:</strong> ${{ gain | round(2) }}</p>
+      <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit">Upload Portfolio</button>
+      </form>
 
       {% if portfolio %}
+      <div class="summary">
+        <p><strong>Total Invested:</strong> ${{ invested }}</p>
+        <p><strong>Current Value:</strong> ${{ current }}</p>
+        <p><strong>Gain/Loss:</strong> ${{ gain }}</p>
+      </div>
+
       <table>
         <thead>
           <tr>
@@ -45,41 +50,37 @@
           </tr>
         </thead>
         <tbody>
-          {% for row in portfolio %}
+          {% for s in portfolio %}
           <tr>
-            <td>{{ row['Ticker'] }}</td>
-            <td>{{ row['Quantity'] }}</td>
-            <td>${{ row['Buy Price'] }}</td>
-            <td>${{ row['Current Price'] }}</td>
-            <td>${{ row['Total Value'] }}</td>
-            <td>{{ row['AI Suggestion'] }}</td>
-            <td>{{ row['AI Reason'] }}</td>
+            <td>{{ s["Ticker"] }}</td>
+            <td>{{ s["Quantity"] }}</td>
+            <td>${{ s["Buy Price"] }}</td>
+            <td>${{ s["Current Price"] }}</td>
+            <td>${{ s["Total Value"] }}</td>
+            <td>{{ s["AI Suggestion"] }}</td>
+            <td>{{ s["AI Reason"] }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-      {% else %}
-      <p>No portfolio data uploaded. Please upload a .csv file.</p>
       {% endif %}
     </section>
 
-    <!-- Watchlist Section -->
     <section id="watchlist" class="tab-section" style="display: none;">
       <h1>Watchlist</h1>
-      <form class="watchlist-form" onsubmit="addToWatchlist(event)">
-        <input type="text" id="watchlist-symbol" placeholder="Enter Ticker (e.g. AAPL)" required />
+      <form onsubmit="addToWatchlist(event)">
+        <input type="text" id="watchlist-symbol" placeholder="Enter Ticker" required />
         <button type="submit">Add</button>
       </form>
       <div id="watchlist-container"></div>
     </section>
 
-    <!-- News Section -->
     <section id="news" class="tab-section" style="display: none;">
-      <h1>Market News</h1>
+      <h1>Latest Market News</h1>
       {% for article in news %}
-      <div class="news-item">
+      <div class="news-card">
         <h3>{{ article['title'] }}</h3>
-        <p>{{ article['description'][:150] }}...</p>
+        <p>{{ article['description'] }}</p>
         <a href="{{ article['url'] }}" target="_blank">Read More</a>
       </div>
       {% endfor %}
@@ -88,94 +89,51 @@
 </div>
 
 <script>
-function showSection(section) {
-  document.querySelectorAll('.tab-section').forEach(el => el.style.display = 'none');
-  document.getElementById(section).style.display = 'block';
+function showSection(sectionId) {
+  document.querySelectorAll('.tab-section').forEach(s => s.style.display = 'none');
+  document.getElementById(sectionId).style.display = 'block';
 }
-
 function toggleDarkMode() {
-  document.body.classList.toggle('dark-mode');
+  document.body.classList.toggle("dark-mode");
 }
 
-const FINNHUB_API_KEY = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag";
+const API = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag";
 
 async function addToWatchlist(e) {
   e.preventDefault();
-  const input = document.getElementById("watchlist-symbol");
-  const symbol = input.value.trim().toUpperCase();
-  input.value = "";
+  const symbol = document.getElementById("watchlist-symbol").value.trim().toUpperCase();
   if (!symbol) return;
+  const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${API}`);
+  const data = await res.json();
+  const price = data.c;
 
-  const price = await getWatchPrice(symbol);
+  const chartId = `chart-${symbol}-${Date.now()}`;
   const container = document.getElementById("watchlist-container");
+  const div = document.createElement("div");
+  div.className = "watchlist-item";
+  div.innerHTML = `
+    <strong>${symbol}</strong> $${price.toFixed(2)}
+    <canvas id="${chartId}" height="40"></canvas>
+    <button onclick="this.parentElement.remove()">❌</button>`;
+  container.appendChild(div);
 
-  const id = `chart-${symbol}-${Date.now()}`;
-
-  const item = document.createElement("div");
-  item.className = "watchlist-item";
-  item.innerHTML = `
-    <div style="flex: 1;">
-      <strong>${symbol}</strong> <span style="margin-left: 10px;">$${price.toFixed(2)}</span>
-      <canvas id="${id}" height="40"></canvas>
-    </div>
-    <button class="delete-btn" onclick="this.parentElement.remove(); saveWatchlistToStorage();">🗑️</button>
-  `;
-  container.appendChild(item);
-
-  renderMiniChart(id, price);
-  saveWatchlistToStorage();
-}
-
-async function getWatchPrice(symbol) {
-  try {
-    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`);
-    const data = await res.json();
-    return parseFloat(data.c || 0);
-  } catch {
-    return 0;
-  }
-}
-
-function renderMiniChart(canvasId, currentPrice) {
-  const ctx = document.getElementById(canvasId);
-  if (!ctx) return;
-  new Chart(ctx, {
+  new Chart(document.getElementById(chartId), {
     type: 'line',
     data: {
       labels: ['Start', 'Now'],
       datasets: [{
-        data: [currentPrice * 0.95, currentPrice],
+        data: [price * 0.95, price],
         borderColor: '#1f77b4',
-        tension: 0.4,
         fill: false,
-        pointRadius: 0
+        tension: 0.4
       }]
     },
     options: {
       plugins: { legend: { display: false } },
-      scales: {
-        x: { display: false },
-        y: { display: false }
-      }
+      scales: { x: { display: false }, y: { display: false } }
     }
   });
 }
-
-function saveWatchlistToStorage() {
-  const items = [];
-  document.querySelectorAll(".watchlist-item strong").forEach(el => {
-    if (el.textContent) items.push(el.textContent);
-  });
-  localStorage.setItem("watchlist", JSON.stringify(items));
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  const saved = JSON.parse(localStorage.getItem("watchlist") || "[]");
-  saved.forEach(symbol => {
-    document.getElementById("watchlist-symbol").value = symbol;
-    document.querySelector(".watchlist-form").dispatchEvent(new Event("submit"));
-  });
-});
 </script>
 </body>
 </html>
