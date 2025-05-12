@@ -2,10 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FinFuse Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="light-mode">
   <header class="header">
@@ -13,24 +11,24 @@
       <img src="{{ url_for('static', filename='logo.png') }}" alt="FinFuse" class="header-logo">
       <h1>FinFuse Portfolio Dashboard</h1>
     </div>
-    <button onclick="toggleDarkMode()" class="theme-toggle">🌓 Theme</button>
+    <button onclick="toggleDarkMode()" class="theme-toggle">🌙 Theme</button>
   </header>
+
   <nav class="navbar">
     <button onclick="showSection('portfolio')">📊 Portfolio</button>
     <button onclick="showSection('watchlist')">👁️ Watchlist</button>
     <button onclick="showSection('news')">📰 News</button>
   </nav>
+
   <main>
     <section id="portfolio" class="tab-section">
-      <form method="POST" enctype="multipart/form-data" class="upload-form">
-        <input type="file" name="file" accept=".csv" required />
-        <button type="submit">Upload Portfolio</button>
-      </form>
       <h2>Portfolio Overview</h2>
       <p><strong>Total Invested:</strong> ${{ invested }}</p>
       <p><strong>Current Value:</strong> ${{ current }}</p>
       <p><strong>Gain/Loss:</strong> ${{ gain }}</p>
-      <table>
+      <button onclick="fetchAISuggestions()">💡 Get AI Suggestions</button>
+
+      <table id="portfolio-table">
         <thead>
           <tr>
             <th>Ticker</th>
@@ -45,28 +43,30 @@
         <tbody>
           {% for stock in portfolio %}
           <tr>
-            <td>{{ stock["Ticker"] }}</td>
-            <td>{{ stock["Quantity"] }}</td>
-            <td>${{ stock["Buy Price"] }}</td>
-            <td>${{ "%.2f"|format(stock["Current Price"]) }}</td>
-            <td>${{ "%.2f"|format(stock["Total Value"]) }}</td>
-            <td>{{ stock["AI Suggestion"] }}</td>
-            <td>{{ stock["AI Reason"] }}</td>
+            <td>{{ stock['Ticker'] }}</td>
+            <td>{{ stock['Quantity'] }}</td>
+            <td>${{ stock['Buy Price'] }}</td>
+            <td>${{ stock['Current Price'] }}</td>
+            <td>${{ stock['Total Value'] }}</td>
+            <td class="ai-suggestion">...</td>
+            <td class="ai-reason">...</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </section>
+
     <section id="watchlist" class="tab-section" style="display: none;">
       <h2>Watchlist</h2>
       <form id="watchlist-form" onsubmit="addToWatchlist(event)">
-        <input type="text" id="watchlist-symbol" placeholder="Enter symbol (e.g., AAPL)" required />
+        <input type="text" id="watchlist-symbol" placeholder="Enter symbol (e.g. AAPL)" required />
         <button type="submit">Add</button>
       </form>
-      <div id="watchlist-container"></div>
+      <ul id="watchlist-container"></ul>
     </section>
+
     <section id="news" class="tab-section" style="display: none;">
-      <h2>Latest Market News</h2>
+      <h2>Market News</h2>
       <div id="news-container">
         {% for article in news %}
         <div class="news-card">
@@ -78,67 +78,34 @@
       </div>
     </section>
   </main>
+
   <script>
-    function showSection(sectionId) {
+    function showSection(id) {
       document.querySelectorAll('.tab-section').forEach(el => el.style.display = 'none');
-      document.getElementById(sectionId).style.display = 'block';
+      document.getElementById(id).style.display = 'block';
     }
+
     function toggleDarkMode() {
       document.body.classList.toggle("dark-mode");
     }
-    const FINNHUB_API_KEY = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag";
-    async function addToWatchlist(e) {
+
+    function addToWatchlist(e) {
       e.preventDefault();
-      const input = document.getElementById("watchlist-symbol");
-      const symbol = input.value.trim().toUpperCase();
+      const symbol = document.getElementById("watchlist-symbol").value.trim().toUpperCase();
       if (!symbol) return;
-      input.value = "";
-      const price = await fetchPrice(symbol);
-      const container = document.getElementById("watchlist-container");
-      const id = `chart-${symbol}-${Date.now()}`;
-      const div = document.createElement("div");
-      div.className = "watchlist-item";
-      div.innerHTML = `
-        <strong>${symbol}</strong> $${price.toFixed(2)}
-        <canvas id="${id}" height="40"></canvas>
-        <button onclick="this.parentElement.remove()">❌</button>
-      `;
-      container.appendChild(div);
-      drawChart(id, price);
+      const item = document.createElement("li");
+      item.className = "watchlist-item";
+      item.textContent = `${symbol} (loading...)`;
+      document.getElementById("watchlist-container").appendChild(item);
+
+      fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag`)
+        .then(res => res.json())
+        .then(data => {
+          const price = data.c || 0;
+          item.textContent = `${symbol}: $${price.toFixed(2)}`;
+        });
     }
-    async function fetchPrice(symbol) {
-      try {
-        const res = await fetch(\`https://finnhub.io/api/v1/quote?symbol=\${symbol}&token=\${FINNHUB_API_KEY}\`);
-        const data = await res.json();
-        return parseFloat(data.c || 0);
-      } catch {
-        return 0;
-      }
-    }
-    function drawChart(canvasId, price) {
-      const ctx = document.getElementById(canvasId);
-      if (!ctx) return;
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: ['Start', 'Now'],
-          datasets: [{
-            data: [price * 0.95, price],
-            borderColor: '#1f77b4',
-            tension: 0.3,
-            fill: false
-          }]
-        },
-        options: {
-          plugins: { legend: { display: false } },
-          scales: { x: { display: false }, y: { display: false } }
-        }
-      });
-    }
-    window.addEventListener("DOMContentLoaded", () => {
-      showSection('portfolio');
-      setInterval(refreshNews, 30000);
-    });
+
     async function refreshNews() {
       try {
         const res = await fetch('/api/news');
@@ -155,10 +122,27 @@
           \`;
           container.appendChild(div);
         });
-      } catch (e) {
-        console.error("Failed to refresh news:", e);
+      } catch (err) {
+        console.error("Failed to fetch news", err);
       }
     }
+
+    async function fetchAISuggestions() {
+      const rows = document.querySelectorAll("#portfolio-table tbody tr");
+      const symbols = Array.from(rows).map(row => row.children[0].textContent.trim()).join(",");
+      const res = await fetch("/api/ai?symbols=" + symbols);
+      const data = await res.json();
+      rows.forEach(row => {
+        const symbol = row.children[0].textContent.trim();
+        row.querySelector(".ai-suggestion").textContent = data[symbol]?.suggestion || "N/A";
+        row.querySelector(".ai-reason").textContent = data[symbol]?.reason || "N/A";
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      showSection('portfolio');
+      setInterval(refreshNews, 60000);
+    });
   </script>
 </body>
 </html>
