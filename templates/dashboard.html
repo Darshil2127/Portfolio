@@ -8,35 +8,31 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="light-mode">
-<div class="layout">
-  <!-- Sidebar -->
-  <nav class="sidebar">
-    <div class="logo-section">
-      <img src="{{ url_for('static', filename='logo.png') }}" class="logo-img" alt="FinFuse Logo">
-      <h2>FinFuse</h2>
+  <header class="header">
+    <div class="logo-bar">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="FinFuse" class="header-logo">
+      <h1>FinFuse Portfolio Dashboard</h1>
     </div>
-    <ul class="nav-links">
-      <li onclick="showSection('portfolio')">📊 Portfolio</li>
-      <li onclick="showSection('watchlist')">👁️ Watchlist</li>
-      <li onclick="showSection('news')">📰 News</li>
-    </ul>
+    <button onclick="toggleDarkMode()" class="theme-toggle">🌓 Theme</button>
+  </header>
+
+  <nav class="navbar">
+    <button onclick="showSection('portfolio')">📊 Portfolio</button>
+    <button onclick="showSection('watchlist')">👁️ Watchlist</button>
+    <button onclick="showSection('news')">📰 News</button>
   </nav>
 
-  <!-- Main Content -->
-  <main class="main-content">
-    <button class="toggle-theme-button" onclick="toggleDarkMode()">🌗 Theme</button>
-
-    <!-- Portfolio -->
-    <section id="portfolio" class="tab-section" style="display: block;">
-      <h1>Portfolio Overview</h1>
-      <form action="/" method="POST" enctype="multipart/form-data" style="margin-bottom: 1.5rem;">
+  <main>
+    <section id="portfolio" class="tab-section">
+      <form method="POST" enctype="multipart/form-data" class="upload-form">
         <input type="file" name="file" accept=".csv" required />
         <button type="submit">Upload Portfolio</button>
       </form>
 
-      <p><strong>Total Invested:</strong> ${{ invested or 0 }}</p>
-      <p><strong>Current Value:</strong> ${{ current or 0 }}</p>
-      <p><strong>Gain/Loss:</strong> ${{ gain or 0 }}</p>
+      <h2>Portfolio Overview</h2>
+      <p><strong>Total Invested:</strong> ${{ invested }}</p>
+      <p><strong>Current Value:</strong> ${{ current }}</p>
+      <p><strong>Gain/Loss:</strong> ${{ gain }}</p>
 
       <table>
         <thead>
@@ -51,36 +47,34 @@
           </tr>
         </thead>
         <tbody>
-          {% for row in portfolio %}
+          {% for stock in portfolio %}
           <tr>
-            <td>{{ row['Ticker'] }}</td>
-            <td>{{ row['Quantity'] }}</td>
-            <td>${{ row['Buy Price'] }}</td>
-            <td>${{ row['Current Price'] }}</td>
-            <td>${{ row['Total Value'] }}</td>
-            <td>{{ row['AI Suggestion'] }}</td>
-            <td>{{ row['AI Reason'] }}</td>
+            <td>{{ stock["Ticker"] }}</td>
+            <td>{{ stock["Quantity"] }}</td>
+            <td>${{ stock["Buy Price"] }}</td>
+            <td>${{ "%.2f"|format(stock["Current Price"]) }}</td>
+            <td>${{ "%.2f"|format(stock["Total Value"]) }}</td>
+            <td>{{ stock["AI Suggestion"] }}</td>
+            <td>{{ stock["AI Reason"] }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </section>
 
-    <!-- Watchlist -->
     <section id="watchlist" class="tab-section" style="display: none;">
-      <h1>Watchlist</h1>
-      <form class="watchlist-form" onsubmit="addToWatchlist(event)">
-        <input type="text" id="watchlist-symbol" placeholder="Enter Ticker (e.g. AAPL)" required />
+      <h2>Watchlist</h2>
+      <form id="watchlist-form" onsubmit="addToWatchlist(event)">
+        <input type="text" id="watchlist-symbol" placeholder="Enter symbol (e.g., AAPL)" required />
         <button type="submit">Add</button>
       </form>
       <div id="watchlist-container"></div>
     </section>
 
-    <!-- News -->
     <section id="news" class="tab-section" style="display: none;">
-      <h1>Latest Market News</h1>
+      <h2>Latest Market News</h2>
       {% for article in news %}
-      <div class="news-item">
+      <div class="news-card">
         <h3>{{ article['title'] }}</h3>
         <p>{{ article['description'][:150] }}...</p>
         <a href="{{ article['url'] }}" target="_blank">Read More</a>
@@ -88,81 +82,77 @@
       {% endfor %}
     </section>
   </main>
-</div>
 
-<!-- Script Logic -->
-<script>
-function showSection(id) {
-  const tabs = document.querySelectorAll('.tab-section');
-  tabs.forEach(tab => tab.style.display = 'none');
-  document.getElementById(id).style.display = 'block';
-}
+  <script>
+    function showSection(sectionId) {
+      document.querySelectorAll('.tab-section').forEach(s => s.style.display = 'none');
+      document.getElementById(sectionId).style.display = 'block';
+    }
 
-function toggleDarkMode() {
-  document.body.classList.toggle("dark-mode");
-}
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+    }
 
-const FINNHUB_API_KEY = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag";
+    const FINNHUB_API_KEY = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag";
 
-async function addToWatchlist(e) {
-  e.preventDefault();
-  const input = document.getElementById("watchlist-symbol");
-  const symbol = input.value.trim().toUpperCase();
-  input.value = "";
-  if (!symbol) return;
+    async function addToWatchlist(e) {
+      e.preventDefault();
+      const input = document.getElementById("watchlist-symbol");
+      const symbol = input.value.trim().toUpperCase();
+      if (!symbol) return;
+      input.value = "";
 
-  const price = await getWatchPrice(symbol);
-  const container = document.getElementById("watchlist-container");
-  const id = `chart-${symbol}-${Date.now()}`;
+      const price = await fetchPrice(symbol);
+      const container = document.getElementById("watchlist-container");
+      const id = `chart-${symbol}-${Date.now()}`;
 
-  const item = document.createElement("div");
-  item.className = "watchlist-item";
-  item.innerHTML = `
-    <div style="flex: 1;">
-      <strong>${symbol}</strong> <span style="margin-left: 10px;">$${price.toFixed(2)}</span>
-      <canvas id="${id}" height="40"></canvas>
-    </div>
-    <button class="delete-btn" onclick="this.parentElement.remove()">❌</button>
-  `;
-  container.appendChild(item);
+      const div = document.createElement("div");
+      div.className = "watchlist-item";
+      div.innerHTML = `
+        <strong>${symbol}</strong> $${price.toFixed(2)}
+        <canvas id="${id}" height="40"></canvas>
+        <button onclick="this.parentElement.remove()">❌</button>
+      `;
+      container.appendChild(div);
 
-  renderMiniChart(id, price);
-}
+      drawChart(id, price);
+    }
 
-async function getWatchPrice(symbol) {
-  try {
-    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`);
-    const data = await res.json();
-    return parseFloat(data.c || 0);
-  } catch {
-    return 0;
-  }
-}
-
-function renderMiniChart(canvasId, currentPrice) {
-  const ctx = document.getElementById(canvasId);
-  if (!ctx) return;
-  new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ['Start', 'Now'],
-      datasets: [{
-        data: [currentPrice * 0.95, currentPrice],
-        borderColor: '#1f77b4',
-        tension: 0.4,
-        fill: false,
-        pointRadius: 0
-      }]
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { display: false },
-        y: { display: false }
+    async function fetchPrice(symbol) {
+      try {
+        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`);
+        const data = await res.json();
+        return parseFloat(data.c || 0);
+      } catch {
+        return 0;
       }
     }
-  });
-}
-</script>
+
+    function drawChart(canvasId, price) {
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return;
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Start', 'Now'],
+          datasets: [{
+            data: [price * 0.95, price],
+            borderColor: '#1f77b4',
+            tension: 0.3,
+            fill: false
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: { x: { display: false }, y: { display: false } }
+        }
+      });
+    }
+
+    // Default: show portfolio
+    window.addEventListener("DOMContentLoaded", () => {
+      showSection('portfolio');
+    });
+  </script>
 </body>
 </html>
