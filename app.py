@@ -18,28 +18,39 @@ def get_current_price(symbol):
     except:
         return 0
 
-def get_ai_decision(stocks, summary):
+def get_batch_ai_suggestions(stocks, news_summary):
     try:
         prompt = (
-            "You're a financial advisor. Based on the portfolio and news, suggest BUY / SELL / HOLD with reason:\n"
-            + "\n".join([f"{s['Ticker']}: Buy @ {s['Buy Price']}, now {s['Current Price']}" for s in stocks]) +
-            f"\nNews:\n{summary}"
+            "You are a smart stock advisor. Based on the portfolio and recent news, suggest action (BUY/SELL/HOLD) for each stock:\n"
+            "News:\n" + news_summary[:1000] + "\n\nPortfolio:\n" +
+            "\n".join([f"{s['Ticker']}: Buy at ${s['Buy Price']}, current ${s['Current Price']}" for s in stocks]) +
+            "\n\nGive output in this format:\nTICKER - DECISION: REASON"
         )
-        res = openai.ChatCompletion.create(
+
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=400
+            max_tokens=700,
+            temperature=0.5
         )
-        lines = res.choices[0].message.content.strip().split('\n')
-        decisions = {}
+
+        lines = response.choices[0].message.content.strip().split("\n")
+        suggestions = {}
         for line in lines:
-            if '-' in line and ':' in line:
-                ticker, rest = line.split('-', 1)
-                decision, reason = rest.split(':', 1)
-                decisions[ticker.strip().upper()] = (decision.strip(), reason.strip())
-        return decisions
-    except:
+            if "-" in line and ":" in line:
+                parts = line.split("-", 1)
+                ticker = parts[0].strip().upper()
+                decision_part = parts[1].split(":", 1)
+                if len(decision_part) == 2:
+                    decision = decision_part[0].strip().upper()
+                    reason = decision_part[1].strip()
+                    suggestions[ticker] = (decision, reason)
+
+        return suggestions
+    except Exception as e:
+        print("[ERROR] OpenAI fallback:", e)
         return {}
+
 
 @app.route("/", methods=["GET", "POST"])
 def dashboard():
