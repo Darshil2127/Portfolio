@@ -29,10 +29,17 @@ body {
 }
 
 .logo-img {
-  width: 80px;
+  width: 60px;
   height: auto;
-  margin-bottom: 10px;
+  display: block;
+  margin: 0 auto 0.5rem;
 }
+
+.logo-img:hover {
+  transform: scale(1.05);
+  transition: transform 0.3s ease;
+}
+
 
 .nav-links li {
   list-style: none;
