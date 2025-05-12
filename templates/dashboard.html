@@ -1,194 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FinFuse Portfolio Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FinFuse Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="light-mode">
+<div class="layout">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo-section">
+      <img src="{{ url_for('static', filename='logo.png') }}" class="logo-img" alt="FinFuse Logo">
+      <h2>FinFuse</h2>
+    </div>
+    <ul class="nav-links">
+      <li onclick="showSection('portfolio')">📊 Portfolio</li>
+      <li onclick="showSection('watchlist')">👁️ Watchlist</li>
+      <li onclick="showSection('news')">📰 News</li>
+    </ul>
+  </nav>
 
-  <button class="toggle-theme-button" onclick="toggleDarkMode()">🌗 Theme</button>
+  <!-- Main Content -->
+  <main class="main-content">
+    <button class="toggle-theme-button" onclick="toggleDarkMode()">🌗 Theme</button>
 
-  <div class="layout">
-    <nav class="sidebar">
-      <div class="logo-section">
-        <img src="{{ url_for('static', filename='logo.png') }}" class="logo-img" alt="FinFuse Logo">
-        <h2>FinFuse</h2>
-      </div>
-      <ul class="nav-links">
-        <li onclick="showSection('portfolio')">📊 Portfolio</li>
-        <li onclick="showSection('watchlist')">👁️ Watchlist</li>
-        <li onclick="showSection('news')">📰 News</li>
-      </ul>
-    </nav>
+    <!-- Portfolio -->
+    <section id="portfolio" class="tab-section" style="display: block;">
+      <h1>Portfolio Overview</h1>
+      <form action="/" method="POST" enctype="multipart/form-data" style="margin-bottom: 1.5rem;">
+        <input type="file" name="file" accept=".csv" required />
+        <button type="submit">Upload Portfolio</button>
+      </form>
 
-    <main class="main-content">
-      <!-- Portfolio Section -->
-      <section id="portfolio" class="tab-section">
-        <h1>Portfolio Overview</h1>
-        <p><strong>Total Invested:</strong> ${{ invested }}</p>
-        <p><strong>Current Value:</strong> ${{ current }}</p>
-        <p><strong>Gain/Loss:</strong> ${{ gain }}</p>
+      <p><strong>Total Invested:</strong> ${{ invested or 0 }}</p>
+      <p><strong>Current Value:</strong> ${{ current or 0 }}</p>
+      <p><strong>Gain/Loss:</strong> ${{ gain or 0 }}</p>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Ticker</th>
-              <th>Quantity</th>
-              <th>Buy Price</th>
-              <th>Current Price</th>
-              <th>Total Value</th>
-              <th>AI Suggestion</th>
-              <th>AI Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for stock in portfolio %}
-            <tr>
-              <td>{{ stock['Ticker'] }}</td>
-              <td>{{ stock['Quantity'] }}</td>
-              <td>${{ "%.2f"|format(stock['Buy Price']) }}</td>
-              <td>${{ "%.2f"|format(stock['Current Price']) }}</td>
-              <td>${{ "%.2f"|format(stock['Total Value']) }}</td>
-              <td>{{ stock['AI Suggestion'] }}</td>
-              <td>{{ stock['AI Reason'] }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </section>
-
-      <!-- Watchlist Section -->
-      <section id="watchlist" class="tab-section" style="display: none;">
-        <h1>Watchlist</h1>
-        <form class="watchlist-form" onsubmit="addToWatchlist(event)">
-          <input type="text" id="watchlist-symbol" placeholder="Enter Ticker (e.g. AAPL)" required />
-          <button type="submit">Add</button>
-        </form>
-        <div id="watchlist-container"></div>
-      </section>
-
-      <!-- News Section -->
-      <section id="news" class="tab-section" style="display: none;">
-        <h1>Latest Market News</h1>
-        <div id="news-container">
-          {% for article in news %}
-          <div class="news-item">
-            <h3>{{ article['title'] }}</h3>
-            <p>{{ article['description'][:200] }}...</p>
-            <a href="{{ article['url'] }}" target="_blank">Read More</a>
-          </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Quantity</th>
+            <th>Buy Price</th>
+            <th>Current Price</th>
+            <th>Total Value</th>
+            <th>AI Suggestion</th>
+            <th>AI Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in portfolio %}
+          <tr>
+            <td>{{ row['Ticker'] }}</td>
+            <td>{{ row['Quantity'] }}</td>
+            <td>${{ row['Buy Price'] }}</td>
+            <td>${{ row['Current Price'] }}</td>
+            <td>${{ row['Total Value'] }}</td>
+            <td>{{ row['AI Suggestion'] }}</td>
+            <td>{{ row['AI Reason'] }}</td>
+          </tr>
           {% endfor %}
-        </div>
-      </section>
-    </main>
-  </div>
+        </tbody>
+      </table>
+    </section>
 
-  <!-- JavaScript Logic -->
-  <script>
-    function showSection(section) {
-      document.querySelectorAll('.tab-section').forEach(el => el.style.display = 'none');
-      document.getElementById(section).style.display = 'block';
-    }
+    <!-- Watchlist -->
+    <section id="watchlist" class="tab-section" style="display: none;">
+      <h1>Watchlist</h1>
+      <form class="watchlist-form" onsubmit="addToWatchlist(event)">
+        <input type="text" id="watchlist-symbol" placeholder="Enter Ticker (e.g. AAPL)" required />
+        <button type="submit">Add</button>
+      </form>
+      <div id="watchlist-container"></div>
+    </section>
 
-    function toggleDarkMode() {
-      document.body.classList.toggle('dark-mode');
-    }
+    <!-- News -->
+    <section id="news" class="tab-section" style="display: none;">
+      <h1>Latest Market News</h1>
+      {% for article in news %}
+      <div class="news-item">
+        <h3>{{ article['title'] }}</h3>
+        <p>{{ article['description'][:150] }}...</p>
+        <a href="{{ article['url'] }}" target="_blank">Read More</a>
+      </div>
+      {% endfor %}
+    </section>
+  </main>
+</div>
 
-    const FINNHUB_API_KEY = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag";
+<!-- Script Logic -->
+<script>
+function showSection(id) {
+  const tabs = document.querySelectorAll('.tab-section');
+  tabs.forEach(tab => tab.style.display = 'none');
+  document.getElementById(id).style.display = 'block';
+}
 
-    async function addToWatchlist(e) {
-      e.preventDefault();
-      const input = document.getElementById("watchlist-symbol");
-      const symbol = input.value.trim().toUpperCase();
-      input.value = "";
-      if (!symbol) return;
+function toggleDarkMode() {
+  document.body.classList.toggle("dark-mode");
+}
 
-      const price = await getWatchPrice(symbol);
-      const container = document.getElementById("watchlist-container");
-      const id = `chart-${symbol}-${Date.now()}`;
+const FINNHUB_API_KEY = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag";
 
-      const item = document.createElement("div");
-      item.className = "watchlist-item";
-      item.innerHTML = `
-        <div style="flex: 1;">
-          <strong>${symbol}</strong> <span style="margin-left: 10px;">$${price.toFixed(2)}</span>
-          <canvas id="${id}" height="40"></canvas>
-        </div>
-        <button class="delete-btn" onclick="this.parentElement.remove(); saveWatchlistToStorage()">🗑️</button>
-      `;
-      container.appendChild(item);
+async function addToWatchlist(e) {
+  e.preventDefault();
+  const input = document.getElementById("watchlist-symbol");
+  const symbol = input.value.trim().toUpperCase();
+  input.value = "";
+  if (!symbol) return;
 
-      renderMiniChart(id, price);
-      saveWatchlistToStorage();
-    }
+  const price = await getWatchPrice(symbol);
+  const container = document.getElementById("watchlist-container");
+  const id = `chart-${symbol}-${Date.now()}`;
 
-    async function getWatchPrice(symbol) {
-      try {
-        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`);
-        const data = await res.json();
-        return parseFloat(data.c || 0);
-      } catch {
-        return 0;
+  const item = document.createElement("div");
+  item.className = "watchlist-item";
+  item.innerHTML = `
+    <div style="flex: 1;">
+      <strong>${symbol}</strong> <span style="margin-left: 10px;">$${price.toFixed(2)}</span>
+      <canvas id="${id}" height="40"></canvas>
+    </div>
+    <button class="delete-btn" onclick="this.parentElement.remove()">❌</button>
+  `;
+  container.appendChild(item);
+
+  renderMiniChart(id, price);
+}
+
+async function getWatchPrice(symbol) {
+  try {
+    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`);
+    const data = await res.json();
+    return parseFloat(data.c || 0);
+  } catch {
+    return 0;
+  }
+}
+
+function renderMiniChart(canvasId, currentPrice) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Start', 'Now'],
+      datasets: [{
+        data: [currentPrice * 0.95, currentPrice],
+        borderColor: '#1f77b4',
+        tension: 0.4,
+        fill: false,
+        pointRadius: 0
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { display: false }
       }
     }
-
-    function renderMiniChart(canvasId, currentPrice) {
-      const ctx = document.getElementById(canvasId);
-      if (!ctx) return;
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: ['Start', 'Now'],
-          datasets: [{
-            data: [currentPrice * 0.95, currentPrice],
-            borderColor: '#1f77b4',
-            tension: 0.4,
-            fill: false,
-            pointRadius: 0
-          }]
-        },
-        options: {
-          animation: {
-            duration: 1000,
-            easing: 'easeInOutQuad'
-          },
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { display: false },
-            y: { display: false }
-          },
-          layout: {
-            padding: 10
-          }
-        }
-      });
-    }
-
-    function saveWatchlistToStorage() {
-      const items = [];
-      document.querySelectorAll(".watchlist-item strong").forEach(el => {
-        if (el.textContent) items.push(el.textContent);
-      });
-      localStorage.setItem("watchlist", JSON.stringify(items));
-    }
-
-    // Load saved watchlist
-    window.addEventListener("DOMContentLoaded", () => {
-      const saved = JSON.parse(localStorage.getItem("watchlist") || "[]");
-      saved.forEach(symbol => {
-        document.getElementById("watchlist-symbol").value = symbol;
-        document.querySelector(".watchlist-form").dispatchEvent(new Event("submit"));
-      });
-    });
-
-    // Refresh news every 30 sec
-    setInterval(async () => {
-      try {
-        const res = await fetch('/api/news');
-        const data = await res.json();
-        const container = document.getElementById("news-container");
-        container.innerHTML = "";
-        data.news.forEach(ar
+  });
+}
+</script>
+</body>
+</html>
