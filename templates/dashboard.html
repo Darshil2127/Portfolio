@@ -3,81 +3,84 @@
 <head>
   <meta charset="UTF-8" />
   <title>FinFuse Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="light-mode">
-  <header class="header">
-    <div class="logo-bar">
-      <img src="{{ url_for('static', filename='logo.png') }}" alt="FinFuse" class="header-logo">
-      <h1>FinFuse Portfolio Dashboard</h1>
-    </div>
-    <button onclick="toggleDarkMode()" class="theme-toggle">🌙 Theme</button>
-  </header>
-
-  <nav class="navbar">
-    <button onclick="showSection('portfolio')">📊 Portfolio</button>
-    <button onclick="showSection('watchlist')">👁️ Watchlist</button>
-    <button onclick="showSection('news')">📰 News</button>
-  </nav>
-
-  <main>
-    <section id="portfolio" class="tab-section">
-      <h2>Portfolio Overview</h2>
-      <p><strong>Total Invested:</strong> ${{ invested }}</p>
-      <p><strong>Current Value:</strong> ${{ current }}</p>
-      <p><strong>Gain/Loss:</strong> ${{ gain }}</p>
-      <button onclick="fetchAISuggestions()">💡 Get AI Suggestions</button>
-
-      <table id="portfolio-table">
-        <thead>
-          <tr>
-            <th>Ticker</th>
-            <th>Quantity</th>
-            <th>Buy Price</th>
-            <th>Current Price</th>
-            <th>Total Value</th>
-            <th>AI Suggestion</th>
-            <th>AI Reason</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for stock in portfolio %}
-          <tr>
-            <td>{{ stock['Ticker'] }}</td>
-            <td>{{ stock['Quantity'] }}</td>
-            <td>${{ stock['Buy Price'] }}</td>
-            <td>${{ stock['Current Price'] }}</td>
-            <td>${{ stock['Total Value'] }}</td>
-            <td class="ai-suggestion">...</td>
-            <td class="ai-reason">...</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
-
-    <section id="watchlist" class="tab-section" style="display: none;">
-      <h2>Watchlist</h2>
-      <form id="watchlist-form" onsubmit="addToWatchlist(event)">
-        <input type="text" id="watchlist-symbol" placeholder="Enter symbol (e.g. AAPL)" required />
-        <button type="submit">Add</button>
-      </form>
-      <ul id="watchlist-container"></ul>
-    </section>
-
-    <section id="news" class="tab-section" style="display: none;">
-      <h2>Market News</h2>
-      <div id="news-container">
-        {% for article in news %}
-        <div class="news-card">
-          <h3>{{ article['title'] }}</h3>
-          <p>{{ article['description'][:150] }}...</p>
-          <a href="{{ article['url'] }}" target="_blank">Read More</a>
-        </div>
-        {% endfor %}
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="logo-section">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="logo-img" alt="FinFuse Logo">
+        <h2>FinFuse</h2>
       </div>
-    </section>
-  </main>
+      <ul class="nav-links">
+        <li><button onclick="showSection('portfolio')">📊 Portfolio</button></li>
+        <li><button onclick="showSection('watchlist')">👁️ Watchlist</button></li>
+        <li><button onclick="showSection('news')">📰 News</button></li>
+      </ul>
+    </nav>
+
+    <main class="main-content">
+      <button class="theme-toggle" onclick="toggleDarkMode()">🌓 Theme</button>
+
+      <section id="portfolio" class="tab-section">
+        <h1>Portfolio Overview</h1>
+        <p><strong>Total Invested:</strong> ${{ invested }}</p>
+        <p><strong>Current Value:</strong> ${{ current }}</p>
+        <p><strong>Gain/Loss:</strong> ${{ gain }}</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Quantity</th>
+              <th>Buy Price</th>
+              <th>Current Price</th>
+              <th>Total Value</th>
+              <th>AI Suggestion</th>
+              <th>AI Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for stock in portfolio %}
+            <tr>
+              <td>{{ stock["Ticker"] }}</td>
+              <td>{{ stock["Quantity"] }}</td>
+              <td>${{ stock["Buy Price"] }}</td>
+              <td>${{ stock["Current Price"] }}</td>
+              <td>${{ stock["Total Value"] }}</td>
+              <td>{{ stock.get("AI Suggestion", "HOLD") }}</td>
+              <td>{{ stock.get("AI Reason", "AI fallback") }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section id="watchlist" class="tab-section" style="display: none;">
+        <h1>Watchlist</h1>
+        <form onsubmit="addToWatchlist(event)">
+          <input type="text" id="watch-symbol" placeholder="Enter Symbol (e.g. AAPL)" required>
+          <button type="submit">Add</button>
+        </form>
+        <div id="watch-container"></div>
+      </section>
+
+      <section id="news" class="tab-section" style="display: none;">
+        <h1>Latest Market News</h1>
+        <div id="news-container">
+          {% for article in news %}
+          <div class="news-card">
+            <h3>{{ article['title'] }}</h3>
+            <p>{{ article['description'][:150] }}...</p>
+            <a href="{{ article['url'] }}" target="_blank">Read More</a>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+    </main>
+  </div>
 
   <script>
     function showSection(id) {
@@ -86,63 +89,38 @@
     }
 
     function toggleDarkMode() {
-      document.body.classList.toggle("dark-mode");
+      document.body.classList.toggle('dark-mode');
     }
 
-    function addToWatchlist(e) {
-      e.preventDefault();
-      const symbol = document.getElementById("watchlist-symbol").value.trim().toUpperCase();
-      if (!symbol) return;
-      const item = document.createElement("li");
-      item.className = "watchlist-item";
-      item.textContent = `${symbol} (loading...)`;
-      document.getElementById("watchlist-container").appendChild(item);
+    async function addToWatchlist(event) {
+      event.preventDefault();
+      const input = document.getElementById("watch-symbol");
+      const symbol = input.value.trim().toUpperCase();
+      input.value = "";
 
-      fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag`)
-        .then(res => res.json())
-        .then(data => {
-          const price = data.c || 0;
-          item.textContent = `${symbol}: $${price.toFixed(2)}`;
-        });
-    }
-
-    async function refreshNews() {
-      try {
-        const res = await fetch('/api/news');
-        const data = await res.json();
-        const container = document.getElementById("news-container");
-        container.innerHTML = "";
-        data.news.forEach(article => {
-          const div = document.createElement("div");
-          div.className = "news-card";
-          div.innerHTML = \`
-            <h3>\${article.title}</h3>
-            <p>\${article.description.slice(0, 150)}...</p>
-            <a href="\${article.url}" target="_blank">Read More</a>
-          \`;
-          container.appendChild(div);
-        });
-      } catch (err) {
-        console.error("Failed to fetch news", err);
-      }
-    }
-
-    async function fetchAISuggestions() {
-      const rows = document.querySelectorAll("#portfolio-table tbody tr");
-      const symbols = Array.from(rows).map(row => row.children[0].textContent.trim()).join(",");
-      const res = await fetch("/api/ai?symbols=" + symbols);
+      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag`);
       const data = await res.json();
-      rows.forEach(row => {
-        const symbol = row.children[0].textContent.trim();
-        row.querySelector(".ai-suggestion").textContent = data[symbol]?.suggestion || "N/A";
-        row.querySelector(".ai-reason").textContent = data[symbol]?.reason || "N/A";
-      });
+      const price = data.c || 0;
+
+      const div = document.createElement("div");
+      div.className = "watch-item";
+      div.innerHTML = `<strong>${symbol}</strong>: $${price.toFixed(2)}`;
+      document.getElementById("watch-container").appendChild(div);
     }
 
-    window.addEventListener("DOMContentLoaded", () => {
-      showSection('portfolio');
-      setInterval(refreshNews, 60000);
-    });
+    // Auto-refresh news every 60 seconds
+    setInterval(async () => {
+      const res = await fetch("/api/news");
+      const news = await res.json();
+      const container = document.getElementById("news-container");
+      if (!container) return;
+      container.innerHTML = news.news.map(n => `
+        <div class="news-card">
+          <h3>${n.title}</h3>
+          <p>${n.description.slice(0, 150)}...</p>
+          <a href="${n.url}" target="_blank">Read More</a>
+        </div>`).join('');
+    }, 60000);
   </script>
 </body>
 </html>
