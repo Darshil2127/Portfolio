@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FinFuse Upload</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="light-mode upload-body">
+  <div class="upload-container">
+    <img src="{{ url_for('static', filename='logo.png') }}" class="upload-logo" alt="FinFuse Logo">
+    <h1>Upload Your Portfolio</h1>
+    <form action="/" method="POST" enctype="multipart/form-data">
+      <input type="file" name="file" accept=".csv" required />
+      <button type="submit">Upload</button>
+    </form>
+  </div>
+</body>
+</html>
