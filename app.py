@@ -1,102 +1,99 @@
 import os
 import pandas as pd
 import requests
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 import openai
 
 app = Flask(__name__)
 
 FINNHUB_API_KEY = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag"
 MARKETAUX_API_TOKEN = "VQLCY5MmRKd5NoGznLXmdm62igUwqttW4eEGxZYp"
-openai.api_key = "sk-proj-..."  # your real OpenAI key
+openai.api_key = "sk-proj-xxx"  # Replace with your real key
+
+stored_portfolio = []
+news_data = []
 
 def get_current_price(symbol):
     try:
-        url = f"https://finnhub.io/api/v1/quote?symbol={symbol}&token={FINNHUB_API_KEY}"
-        data = requests.get(url, timeout=8).json()
-        return float(data.get("c", 0))
+        res = requests.get(f"https://finnhub.io/api/v1/quote?symbol={symbol}&token={FINNHUB_API_KEY}", timeout=5)
+        return float(res.json().get("c", 0))
     except:
         return 0
 
-def get_batch_ai_suggestions(stocks, news_summary):
-    try:
-        prompt = (
-            "You are a smart stock advisor. Based on the portfolio and recent news, suggest action (BUY/SELL/HOLD) for each stock:\n"
-            "News:\n" + news_summary[:1000] + "\n\nPortfolio:\n" +
-            "\n".join([f"{s['Ticker']}: Buy at ${s['Buy Price']}, current ${s['Current Price']}" for s in stocks]) +
-            "\n\nGive output in this format:\nTICKER - DECISION: REASON"
-        )
+@app.route("/", methods=["GET", "POST"])
+def index():
+    global stored_portfolio, news_data
+    if request.method == "POST":
+        file = request.files["file"]
+        df = pd.read_csv(file)
+        enriched = []
+        total_invested = current_value = 0
 
-        response = openai.ChatCompletion.create(
+        for _, row in df.iterrows():
+            symbol = row["Ticker"]
+            qty = row["Quantity"]
+            buy = row["Buy Price"]
+            current = get_current_price(symbol)
+            value = current * qty
+            total_invested += buy * qty
+            current_value += value
+            enriched.append({
+                "Ticker": symbol,
+                "Quantity": qty,
+                "Buy Price": buy,
+                "Current Price": current,
+                "Total Value": value
+            })
+
+        stored_portfolio = enriched
+
+        try:
+            ticker_list = ",".join([s["Ticker"] for s in enriched])
+            url = f"https://api.marketaux.com/v1/news/all?symbols={ticker_list}&language=en&limit=10&api_token={MARKETAUX_API_TOKEN}"
+            news_data = requests.get(url).json().get("data", [])
+        except:
+            news_data = []
+
+        return render_template("dashboard.html",
+                               portfolio=enriched,
+                               invested=round(total_invested, 2),
+                               current=round(current_value, 2),
+                               gain=round(current_value - total_invested, 2),
+                               news=news_data)
+    return render_template("index.html")
+
+@app.route("/api/news")
+def live_news():
+    try:
+        symbols = "AAPL,MSFT,GOOGL,TSLA,BTC-USD,ETH-USD,SPY,QQQ"
+        url = f"https://api.marketaux.com/v1/news/all?symbols={symbols}&language=en&limit=10&api_token={MARKETAUX_API_TOKEN}"
+        return jsonify(news=requests.get(url).json().get("data", []))
+    except:
+        return jsonify(news=[])
+
+@app.route("/api/ai")
+def ai_suggestions():
+    symbols = request.args.get("symbols", "")
+    if not symbols:
+        return {}
+    tickers = symbols.split(",")
+    try:
+        prompt = "Act as a financial advisor. Give a BUY/SELL/HOLD decision with reason for each of the following stocks:\n" + "\n".join(tickers)
+        res = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=700,
-            temperature=0.5
+            max_tokens=400
         )
-
-        lines = response.choices[0].message.content.strip().split("\n")
-        suggestions = {}
-        for line in lines:
+        output = res["choices"][0]["message"]["content"]
+        result = {}
+        for line in output.strip().splitlines():
             if "-" in line and ":" in line:
-                parts = line.split("-", 1)
-                ticker = parts[0].strip().upper()
-                decision_part = parts[1].split(":", 1)
-                if len(decision_part) == 2:
-                    decision = decision_part[0].strip().upper()
-                    reason = decision_part[1].strip()
-                    suggestions[ticker] = (decision, reason)
-
-        return suggestions
-    except Exception as e:
-        print("[ERROR] OpenAI fallback:", e)
-        return {}
-
-
-@app.route("/", methods=["GET", "POST"])
-def dashboard():
-    portfolio_data = []
-    news = []
-    invested = current = gain = 0
-    if request.method == "POST":
-        file = request.files.get("file")
-        if file:
-            df = pd.read_csv(file)
-            symbols = ",".join(df["Ticker"].tolist())
-
-            # Market news
-            try:
-                url = f"https://api.marketaux.com/v1/news/all?symbols={symbols}&language=en&api_token={MARKETAUX_API_TOKEN}"
-                news = requests.get(url).json().get("data", [])
-                summary = " ".join([n.get("description", "") for n in news])
-            except:
-                news = []
-                summary = ""
-
-            for _, row in df.iterrows():
-                ticker = row["Ticker"]
-                qty = row["Quantity"]
-                buy = row["Buy Price"]
-                now = get_current_price(ticker)
-                total = now * qty
-                invested += buy * qty
-                current += total
-                portfolio_data.append({
-                    "Ticker": ticker,
-                    "Quantity": qty,
-                    "Buy Price": buy,
-                    "Current Price": round(now, 2),
-                    "Total Value": round(total, 2)
-                })
-
-            ai = get_ai_decision(portfolio_data, summary)
-            for stock in portfolio_data:
-                stock["AI Suggestion"], stock["AI Reason"] = ai.get(stock["Ticker"], ("HOLD", "AI fallback"))
-
-            gain = round(current - invested, 2)
-
-    return render_template("dashboard.html",
-                           portfolio=portfolio_data,
-                           invested=round(invested, 2),
-                           current=round(current, 2),
-                           gain=gain,
-                           news=news)
+                symbol, rest = line.split("-", 1)
+                act, reason = rest.split(":", 1)
+                result[symbol.strip()] = {
+                    "suggestion": act.strip(),
+                    "reason": reason.strip()
+                }
+        return jsonify(result)
+    except:
+        return jsonify({})
