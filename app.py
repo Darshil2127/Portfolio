@@ -1,14 +1,15 @@
 import os
 import pandas as pd
 import requests
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import openai
 
 app = Flask(__name__)
+app.secret_key = "your-secret-key"
 
 FINNHUB_API_KEY = "d0f3ps1r01qsv9ef5ta0d0f3ps1r01qsv9ef5tag"
 MARKETAUX_API_TOKEN = "VQLCY5MmRKd5NoGznLXmdm62igUwqttW4eEGxZYp"
-openai.api_key = "sk-proj-xxx"  # Replace with your real key
+openai.api_key = "sk-proj-xxx"
 
 stored_portfolio = []
 news_data = []
@@ -46,6 +47,7 @@ def index():
             })
 
         stored_portfolio = enriched
+        session["uploaded"] = True
 
         try:
             ticker_list = ",".join([s["Ticker"] for s in enriched])
@@ -54,13 +56,25 @@ def index():
         except:
             news_data = []
 
-        return render_template("dashboard.html",
-                               portfolio=enriched,
-                               invested=round(total_invested, 2),
-                               current=round(current_value, 2),
-                               gain=round(current_value - total_invested, 2),
-                               news=news_data)
+        return redirect(url_for("dashboard"))
+
     return render_template("index.html")
+
+@app.route("/dashboard")
+def dashboard():
+    if not session.get("uploaded"):
+        return redirect(url_for("index"))
+
+    total_invested = sum(s["Buy Price"] * s["Quantity"] for s in stored_portfolio)
+    current_value = sum(s["Total Value"] for s in stored_portfolio)
+    gain = current_value - total_invested
+
+    return render_template("dashboard.html",
+                           portfolio=stored_portfolio,
+                           invested=round(total_invested, 2),
+                           current=round(current_value, 2),
+                           gain=round(gain, 2),
+                           news=news_data)
 
 @app.route("/api/news")
 def live_news():
