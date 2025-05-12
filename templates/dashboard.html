@@ -11,7 +11,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="logo-section">
-      <img src="{{ url_for('static', filename='logo.png') }}" class="logo-img" alt="FinFuse Logo">
+      <img src="{{ url_for('static', filename='logo.png') }}" class="logo-img" alt="FinFuse Logo" style="height: 40px; width: auto;">
       <h2>FinFuse</h2>
     </div>
     <ul class="nav-links">
@@ -23,11 +23,47 @@
   </nav>
 
   <main class="main-content">
+    <!-- Portfolio Section -->
     <section id="portfolio" class="tab-section">
       <h1>Portfolio Overview</h1>
-      <!-- Summary, cards, charts go here -->
+
+      <p><strong>Total Invested:</strong> ${{ invested | round(2) }}</p>
+      <p><strong>Current Value:</strong> ${{ current | round(2) }}</p>
+      <p><strong>Gain/Loss:</strong> ${{ gain | round(2) }}</p>
+
+      {% if portfolio %}
+      <table>
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Quantity</th>
+            <th>Buy Price</th>
+            <th>Current Price</th>
+            <th>Total Value</th>
+            <th>AI Suggestion</th>
+            <th>AI Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in portfolio %}
+          <tr>
+            <td>{{ row['Ticker'] }}</td>
+            <td>{{ row['Quantity'] }}</td>
+            <td>${{ row['Buy Price'] }}</td>
+            <td>${{ row['Current Price'] }}</td>
+            <td>${{ row['Total Value'] }}</td>
+            <td>{{ row['AI Suggestion'] }}</td>
+            <td>{{ row['AI Reason'] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>No portfolio data uploaded. Please upload a .csv file.</p>
+      {% endif %}
     </section>
 
+    <!-- Watchlist Section -->
     <section id="watchlist" class="tab-section" style="display: none;">
       <h1>Watchlist</h1>
       <form class="watchlist-form" onsubmit="addToWatchlist(event)">
@@ -37,6 +73,7 @@
       <div id="watchlist-container"></div>
     </section>
 
+    <!-- News Section -->
     <section id="news" class="tab-section" style="display: none;">
       <h1>Market News</h1>
       {% for article in news %}
